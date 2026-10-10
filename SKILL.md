@@ -1,7 +1,7 @@
 ---
 name: podcast-to-obsidian
-description: 当用户给出一个播客单集链接（喜马拉雅 / 小宇宙 / 任意 RSS）或本地音频文件，要求下载、转写、总结并整理进 Obsidian 时使用。触发语如「总结这期播客」「把这个链接入库」「整理这期播客笔记」。
-agent_created: true
+description: 把播客单集（喜马拉雅 / 小宇宙 / 任意 RSS / 音频直链 / 本地音频）转成 Obsidian 笔记：下载、转写（句级时间戳 + 说话人分离）、分层总结、原子落盘。当用户给出播客链接或音频文件，要求「总结这期播客」「把这个链接入库」「整理播客笔记」时使用。
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep
 ---
 
 # 播客 → Obsidian
@@ -9,11 +9,17 @@ agent_created: true
 一条命令从链接到笔记：**下载 → 转写（带说话人分离） → 分层总结 → 落盘**。
 5 个脚本 + 1 个编排，缓存即断点续跑。
 
-```
-SKILL=~/.workbuddy/skills/podcast-to-obsidian
+```bash
+SKILL=@SKILL_DIR@
 CONF=$SKILL/config.toml
-PY=python3                          # 需要 3.11+（用到 tomllib）
+PY=python3               # 需要 3.11+（用到 tomllib）
 ```
+
+> 上面 `SKILL=` 那一行由 `install.sh` 自动替换成真实安装路径。
+> 如果它还是个占位符，说明这份是手动拷贝的，改成本机实际目录即可
+> （Claude Code 常见 `~/.claude/skills/podcast-to-obsidian`，
+> Codex 常见 `~/.agents/skills/podcast-to-obsidian`）。
+> 各 harness 的安装与权限注意见 `adapters/`。
 
 ## 文件
 
@@ -62,7 +68,6 @@ $PY $SKILL/publish.py    --job-dir <dir> --config $CONF           # 写库
 标准 `.env` + dotenv 约定，文件在 skill 根目录（已 600）：
 
 ```bash
-SKILL=~/.workbuddy/skills/podcast-to-obsidian
 cp $SKILL/.env.example $SKILL/.env && chmod 600 $SKILL/.env
 # 然后填：
 SILICONFLOW_API_KEY=sk-xxxxxxxx
@@ -86,9 +91,10 @@ SILICONFLOW_API_KEY=sk-xxxxxxxx
 （或 `summarize.py prompt` 打印出来），严格按里面的风格与篇幅要求写。
 除了「硬性约束」那节不要动（动了会被校验拦下），其余随便改。
 
-`plan` 把逐字稿切成 15 分钟一块写到 `blocks/`，我逐块读；
-**节目超过 2 小时可以派子 Agent 逐块压缩**（也算在会话里，不额外扣钱），
+`plan` 把逐字稿切成 15 分钟一块写到 `blocks/`，逐块读；
+**节目超过 2 小时可以派子代理（subagent）逐块压缩**（也算在会话里，不额外扣钱），
 也要把这份提示词交给它。摘要用 `add --block N --json` 回写。
+没有子代理能力的宿主就顺序读块，结果一样，只是慢一点。
 
 `final` 会逐条拿金句回原文 ±30 秒做逐字匹配，匹配不上就降级成「模型概括」，
 **绝不把编出来的句子当原话**。

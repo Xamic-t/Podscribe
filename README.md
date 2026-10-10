@@ -61,6 +61,23 @@ python3 run.py --input "https://www.xiaoyuzhoufm.com/episode/xxxx" --config conf
 
 ---
 
+## 支持的 Agent Harness
+
+遵循 **Agent Skills 开放标准**，同一份 `SKILL.md` 到处能用，脚本本身也不依赖任何框架
+（去掉 `SKILL.md` 它就是一套纯 CLI）。
+
+| Harness | 安装位置 | 安装与调用 |
+|---|---|---|
+| **Claude Code** | `~/.claude/skills/`（用户）或 `.claude/skills/`（项目） | `./install.sh --harness claude`；`/podcast-to-obsidian` 或自动触发 |
+| **Codex** | `~/.agents/skills/`（并软链 `~/.codex/skills/`）或 `.agents/skills/` | `./install.sh --harness codex`；提示词里写 `$podcast-to-obsidian` 或 `/skills` |
+| **WorkBuddy** | `~/.workbuddy/skills/` | `./install.sh --harness workbuddy` |
+| 其它遵循标准的工具 / 纯 CLI | 任意目录 | `./install.sh --dir <路径>`，或直接 `python3 run.py …` |
+
+`install.sh` 会做三件事：拷脚本与模板、把 `SKILL.md` 里的路径占位符替换成真实安装路径、
+按 harness 增删 frontmatter 字段。**已存在的 `config.toml` 和 `.env` 一律保留**，可放心重跑。
+
+各 harness 的权限、沙箱、子代理用法见 `adapters/claude-code.md` 与 `adapters/codex.md`。
+
 ## 快速开始
 
 ### 依赖
@@ -77,6 +94,9 @@ git clone <你的仓库> podcast-to-obsidian && cd podcast-to-obsidian
 cp .env.example .env && chmod 600 .env
 # 编辑 .env，填入：SILICONFLOW_API_KEY=sk-...
 ```
+
+想让 Claude Code / Codex 自动识别，跑一次 `./install.sh`（见上一节）；
+只在命令行用则跳过，直接看下面的「跑」。
 
 然后改 `config.toml` 里**唯一需要你填的东西**：
 
@@ -154,6 +174,8 @@ vault 里新增两个文件（+ 可选的字幕）：
 | `templates/note.md` | 笔记模板（`{{token}}` 占位） |
 | `templates/summary_prompt.md` | **总结提示词，可自己改**（除「硬性约束」一节） |
 | `hotwords.txt` | 专有名词词表，一行一个 |
+| `install.sh` | 多 harness 安装器（Claude Code / Codex / WorkBuddy / 自定义目录） |
+| `adapters/` | 各 harness 的安装位置、权限、沙箱与调用方式 |
 | `CHANGELOG.md` | 三轮评审的完整修改日志 |
 | `.env.example` | 密钥文件模板（真身 `.env` 已被 git 忽略） |
 

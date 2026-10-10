@@ -1,5 +1,23 @@
 # 修改日志
 
+## [2.3.1] · 2026-10-10 · 多 harness 适配（Claude Code / Codex）
+
+| 改动 | 说明 |
+|---|---|
+| `SKILL.md` frontmatter 标准化 | 只保留规范的 `name` / `description` / `allowed-tools`，去掉 WorkBuddy 专属的 `agent_created`（Claude Code 历史上对未知键报过 unexpected key；Codex 会忽略多余键）。`description` 控制在 200 字符内，同时满足 Codex（≤500）与 Claude Code（≤1024） |
+| 路径占位符 | `SKILL.md` 里的 `SKILL=` 改为 `@SKILL_DIR@`，由 `install.sh` 替换成真实安装路径；手动拷贝的场景给了排查提示 |
+| `install.sh` | 新增：`--harness claude/codex/workbuddy/all`、`--project`、`--dir`。拷贝本体 + 替换路径 + 按 harness 增删 frontmatter；**不覆盖已存在的 `config.toml` 与 `.env`**，可重复执行 |
+| Codex 双位置 | 装到 `~/.agents/skills/`（文档口径）并软链 `~/.codex/skills/`（社区口径），Codex 扫描时跟随符号链接 |
+| `adapters/claude-code.md` | 安装位置、`/skills` 调用、Bash 授权白名单写法、长节目用 `general-purpose` 子代理 |
+| `adapters/codex.md` | 安装位置、`[features] skills = true` 开关、`$skill-name` 调用、**沙箱会挡写 vault 的三种解法**、`name`≤100 / `description`≤500 限制、`codex exec --full-auto` |
+| 措辞 | 「子 Agent」改成中性的「子代理」，并说明没有子代理能力的宿主可顺序读块 |
+
+验证（临时 HOME 实跑）：
+- `install.sh` 装出 Claude Code + Codex 两份，软链正确，`.env` 未被带走；
+- 安装副本里 `SKILL=` 已替换成绝对路径，无残留占位符，frontmatter 无 `agent_created`；
+- 从安装副本直接 `python3 tests.py` → 35 项全绿（证明自包含）；
+- 改过 `config.toml` 后重跑安装，配置被保留（幂等）。
+
 ## [2.3.0] · 2026-10-10 · 第三轮复核修复（N1–N7）
 
 第三轮复核在 2.2.0 基础上提出 7 项收尾问题。全部处理，测试从 28 项扩到 **35 项，全绿**。
