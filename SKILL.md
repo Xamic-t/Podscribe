@@ -1,5 +1,5 @@
 ---
-name: podcast-to-obsidian
+name: podscribe
 description: 把播客单集（喜马拉雅 / 小宇宙 / 任意 RSS / 音频直链 / 本地音频）转成 Obsidian 笔记：下载、转写（句级时间戳 + 说话人分离）、分层总结、原子落盘。当用户给出播客链接或音频文件，要求「总结这期播客」「把这个链接入库」「整理播客笔记」时使用。
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep
 ---
@@ -17,8 +17,8 @@ PY=python3               # 需要 3.11+（用到 tomllib）
 
 > 上面 `SKILL=` 那一行由 `install.sh` 自动替换成真实安装路径。
 > 如果它还是个占位符，说明这份是手动拷贝的，改成本机实际目录即可
-> （Claude Code 常见 `~/.claude/skills/podcast-to-obsidian`，
-> Codex 常见 `~/.agents/skills/podcast-to-obsidian`）。
+> （Claude Code 常见 `~/.claude/skills/podscribe`，
+> Codex 常见 `~/.agents/skills/podscribe`）。
 > 各 harness 的安装与权限注意见 `adapters/`。
 
 ## 文件
@@ -75,7 +75,7 @@ SILICONFLOW_API_KEY=sk-xxxxxxxx
 
 - **加载**：`core.load_env()` 用内置解析，**不依赖任何第三方包**
   （支持 `#` 整行与行内注释、`export ` 前缀、成对引号；引号内的 `#` 视为内容）
-- **查找顺序**：`$PODCAST_ENV_FILE` → `<skill>/.env` → `~/.config/podcast-to-obsidian/.env`
+- **查找顺序**：`$PODCAST_ENV_FILE` → `<skill>/.env` → `~/.config/podscribe/.env`
 - 进程里 `export SILICONFLOW_API_KEY=...` 优先级最高（临时覆盖）
 - `.gitignore` 已排除 `.env`，分享 skill 目录不会带走密钥
 - 代码与文档里只出现**变量名**，密钥值由 `core.api_key()` 运行时读取

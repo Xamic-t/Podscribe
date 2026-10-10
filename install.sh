@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 把 podcast-to-obsidian 装到各个 Agent Harness 的 skills 目录。
+# 把 podscribe 装到各个 Agent Harness 的 skills 目录。
 #
 #   ./install.sh                          # 装到 Claude Code + Codex（用户级）
 #   ./install.sh --harness claude         # 只装 Claude Code
@@ -11,7 +11,7 @@
 # 幂等：重复执行只会覆盖脚本与模板；已存在的 config.toml / .env 一律保留。
 set -euo pipefail
 
-NAME="podcast-to-obsidian"
+NAME="podscribe"
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HARNESS="all"
 SCOPE="user"
@@ -94,7 +94,7 @@ link_codex_alias() {
   fi
 }
 
-echo "podcast-to-obsidian · 安装到 ${HARNESS}（${SCOPE} 级）"
+echo "podscribe · 安装到 ${HARNESS}（${SCOPE} 级）"
 echo "源目录：$SRC"
 echo
 

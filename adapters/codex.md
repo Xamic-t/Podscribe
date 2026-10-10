@@ -9,20 +9,20 @@ Codex 同样按 Agent Skills 标准读 `SKILL.md`，所以本仓库不用改结�
 
 ```bash
 mkdir -p ~/.agents/skills ~/.codex/skills
-cp -R /path/to/podcast-to-obsidian ~/.agents/skills/podcast-to-obsidian
-ln -sfn ~/.agents/skills/podcast-to-obsidian ~/.codex/skills/podcast-to-obsidian
+cp -R /path/to/podscribe ~/.agents/skills/podscribe
+ln -sfn ~/.agents/skills/podscribe ~/.codex/skills/podscribe
 ```
 
 项目级（随仓库分发给团队）：
 
 ```bash
 mkdir -p .agents/skills          # 或 .codex/skills
-cp -R /path/to/podcast-to-obsidian .agents/skills/podcast-to-obsidian
+cp -R /path/to/podscribe .agents/skills/podscribe
 ```
 
 `install.sh --harness codex` 会自动完成上面这套（含软链）。
 
-装完记得删掉 `.git`：`rm -rf ~/.agents/skills/podcast-to-obsidian/.git`
+装完记得删掉 `.git`：`rm -rf ~/.agents/skills/podscribe/.git`
 
 ## 开启 skills（旧版本需要）
 
@@ -38,32 +38,32 @@ skills = true
 
 ```toml
 [[skills.config]]
-path = "/Users/<你>/.agents/skills/podcast-to-obsidian/SKILL.md"
+path = "/Users/<你>/.agents/skills/podscribe/SKILL.md"
 enabled = false
 ```
 
 ## 配置
 
 ```bash
-cd ~/.agents/skills/podcast-to-obsidian
+cd ~/.agents/skills/podscribe
 cp .env.example .env && chmod 600 .env     # 填 SILICONFLOW_API_KEY
 $EDITOR config.toml                        # 只改 [vault].path
 ```
 
 ## 调用
 
-- 提示词里写 `$podcast-to-obsidian`；
+- 提示词里写 `$podscribe`；
 - 或在 TUI 里 `/skills` 浏览并插入；
 - 也可以直接说需求，让 Codex 按 description 隐式匹配。
 
 ## Codex 特有的注意点
 
 **1. 沙箱会挡住写操作。** Codex 默认在沙箱里跑（macOS 上是 seatbelt），
-写 `~/.cache/podcast-to-obsidian` 和写你的 vault 都可能被拦。
+写 `~/.cache/podscribe` 和写你的 vault 都可能被拦。
 三种解法任选：
 
 - 运行时按需批准写入（最安全）；
-- `codex --full-auto "用 podcast-to-obsidian 总结 <链接>"`；
+- `codex --full-auto "用 podscribe 总结 <链接>"`；
 - 在 `~/.codex/config.toml` 里放宽：`sandbox_mode = "workspace-write"` 或
   给 `sandbox_permissions` 加上缓存目录与 vault 目录的写权限。
 
@@ -81,7 +81,7 @@ Codex 直接忽略，不会报错——所以共用一份 `SKILL.md` 是安全�
 **5. 非交互执行。**
 
 ```bash
-codex exec --full-auto "用 \$podcast-to-obsidian 总结 https://www.xiaoyuzhoufm.com/episode/xxxx"
+codex exec --full-auto "用 \$podscribe 总结 https://www.xiaoyuzhoufm.com/episode/xxxx"
 ```
 
 注意：非交互模式下落盘前的确认没人点，建议先 `--render-only` 跑一遍确认内容，
@@ -90,5 +90,5 @@ codex exec --full-auto "用 \$podcast-to-obsidian 总结 https://www.xiaoyuzhouf
 **6. 卸载。**
 
 ```bash
-rm -rf ~/.agents/skills/podcast-to-obsidian ~/.codex/skills/podcast-to-obsidian
+rm -rf ~/.agents/skills/podscribe ~/.codex/skills/podscribe
 ```

@@ -1,5 +1,21 @@
 # 修改日志
 
+## [2.4.0] · 2026-10-10 · 更名为 podscribe
+
+`podcast-to-obsidian` 是说明书不是产品名，正式更名为 **podscribe**
+（podcast + scribe：把听到的写成文字）。GitHub 同名未被占用。
+
+| 改了什么 | 说明 |
+|---|---|
+| skill 名 | `SKILL.md` 的 `name: podscribe`（决定 Claude Code 的 `/podscribe` 命令与 Codex 的 `$podscribe`） |
+| 安装目录 | `install.sh` 的 `NAME`，装出来是 `~/.claude/skills/podscribe`、`~/.agents/skills/podscribe` 等 |
+| 文档 | README 标题与全部路径、两份 `adapters/*.md` 的安装路径与调用示例 |
+| env 备份位置 | 新增 `~/.config/podscribe/.env`；旧的 `~/.config/podcast-to-obsidian/{.env,env}` 仍作为兼容项保留 |
+
+**故意没改的**：`runtime.cache_root` 仍是 `~/.cache/podcast-to-obsidian`。
+job 目录里存着音频与逐字稿的绝对路径，改缓存根目录会让已转写的历史 job 全部失效。
+想换就在 `config.toml` 里改，并自己把目录搬过去。
+
 ## [2.3.1] · 2026-10-10 · 多 harness 适配（Claude Code / Codex）
 
 | 改动 | 说明 |

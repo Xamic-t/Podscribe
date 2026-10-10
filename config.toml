@@ -12,6 +12,8 @@ transcript_subdir = "逐字稿"
 publish_strategy = "create_only"
 
 [runtime]
+# 缓存根目录。名字沿用更名前的项目名是刻意的：job 目录里存着音频与逐字稿的
+# 绝对路径，换了会让已转写的历史 job 失效。要改就自己把目录一起搬过去。
 cache_root = "~/.cache/podcast-to-obsidian"
 # python 只在 --engine local 时用（装了 faster-whisper 的 venv）；支持 ~ 开头
 python = "~/.cache/video-to-subtitle-summary/faster-whisper-venv/bin/python"

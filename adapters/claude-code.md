@@ -8,22 +8,22 @@ Claude Code 的 skill 遵循 Agent Skills 开放标准，本仓库根目录就�
 ```bash
 # 个人级（所有项目可用）
 mkdir -p ~/.claude/skills
-cp -R /path/to/podcast-to-obsidian ~/.claude/skills/podcast-to-obsidian
+cp -R /path/to/podscribe ~/.claude/skills/podscribe
 
 # 或项目级（只对当前仓库生效，可提交进团队仓库）
 mkdir -p .claude/skills
-cp -R /path/to/podcast-to-obsidian .claude/skills/podcast-to-obsidian
+cp -R /path/to/podscribe .claude/skills/podscribe
 ```
 
 更省事：仓库根目录的 `install.sh --harness claude` 会做同样的事，并顺手把
 `SKILL.md` 里的 `@SKILL_DIR@` 替换成真实路径。
 
-装完后删掉不需要的东西（可选）：`rm -rf ~/.claude/skills/podcast-to-obsidian/.git`
+装完后删掉不需要的东西（可选）：`rm -rf ~/.claude/skills/podscribe/.git`
 
 ## 配置（和别的 harness 一样）
 
 ```bash
-cd ~/.claude/skills/podcast-to-obsidian
+cd ~/.claude/skills/podscribe
 cp .env.example .env && chmod 600 .env     # 填 SILICONFLOW_API_KEY
 $EDITOR config.toml                        # 只改 [vault].path
 ```
@@ -31,7 +31,7 @@ $EDITOR config.toml                        # 只改 [vault].path
 ## 调用
 
 - 隐式：直接说「总结这期播客 <链接>」，Claude 按 description 自己匹配；
-- 显式：`/podcast-to-obsidian`；
+- 显式：`/podscribe`；
 - 查看是否被识别：`/skills`。
 
 ## Claude Code 特有的注意点
@@ -56,7 +56,7 @@ $EDITOR config.toml                        # 只改 [vault].path
 ```
 
 **2. 工作目录。** Claude Code 在你的项目目录里启动，但脚本全部用绝对路径调用，
-缓存写到 `runtime.cache_root`（默认 `~/.cache/podcast-to-obsidian`），不受 cwd 影响。
+缓存写到 `runtime.cache_root`（默认 `~/.cache/podscribe`），不受 cwd 影响。
 
 **3. 长节目用子代理。** 超过 2 小时的节目，主上下文读完所有 block 会很挤。
 让 Claude 派 `general-purpose` 子代理逐块压缩：把 `templates/summary_prompt.md`
@@ -73,5 +73,5 @@ python3 <SKILL>/summarize.py add --job-dir <dir> --config <SKILL>/config.toml \
 **5. 卸载。**
 
 ```bash
-rm -rf ~/.claude/skills/podcast-to-obsidian
+rm -rf ~/.claude/skills/podscribe
 ```

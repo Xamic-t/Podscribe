@@ -82,7 +82,7 @@ def cloud_transcribe(cfg: dict, meta: dict, jd: Path, model: str) -> tuple[list[
         env_file = C.env_file_path()
         raise C.Fail(STAGE, "API_KEY_MISSING",
                      f"没找到 {env_name}。请把它写进 env 文件"
-                     f"（{env_file or '~/.config/podcast-to-obsidian/env'}，权限 600）"
+                     f"（{env_file or '~/.config/podscribe/env'}，权限 600）"
                      f"，或用 export {env_name}=... 注入。不要写进 config.toml。",
                      C.EXIT_API)
     base_url = asr["cloud_base_url"].rstrip("/")

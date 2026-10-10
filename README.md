@@ -1,9 +1,12 @@
-# 播客 → Obsidian · podcast-to-obsidian
+# podscribe
 
-把一期播客链接变成一篇能长期检索的 Obsidian 笔记：
-**下载 → 转写（句级时间戳 + 说话人分离）→ 分层总结 → 落盘**。
+> **把播客听成笔记。** Podcasts, transcribed and filed into your second brain.
 
-既是一个 **Agent Skill**（给我一个链接，我自己跑完并写总结），
+把一期播客链接变成一篇能长期检索的 Obsidian 笔记：  
+**下载 → 转写（句级时间戳 + 说话人分离）→ 分层总结 → 落盘**。  
+每个要点、每句金句都挂着时间戳；金句回原文逐字校验，编不出来就明确标注。
+
+既是一个 **Agent Skill**（Claude Code / Codex / WorkBuddy 都能用），  
 也是一套**纯 CLI 脚本**（不依赖任何 Agent 框架，`python3` 就能跑）。
 
 ```bash
@@ -14,42 +17,44 @@ python3 run.py --input "https://www.xiaoyuzhoufm.com/episode/xxxx" --config conf
 
 ## 它解决什么问题
 
-| 听播客时的真实痛点 | 这里的做法 |
-|---|---|
-| 听完就忘，想引用一句得回去拖进度条 | 逐字稿带**句级时间戳**；笔记里的每个要点、每句金句都挂着 `01:23:45` |
-| 谁说的分不清 | 云端 ASR 带**说话人分离**（说话人 A / B），长音频分块后做全局标签对齐 |
-| 3 小时节目本地转写要跑 1 小时以上 | 默认走云端，1.5 小时的节目实测**约 80 秒**出稿（本地 faster-whisper 仍是备选） |
-| 总结里的「金句」经常是模型编的 | 每条金句都回原文 ±30 秒做**逐字匹配**，命中才算原话，命中不了降级标注成「模型概括」 |
-| 怕工具覆盖/弄脏已有的库 | 默认 `create_only`：目标存在就停（退出码 11），**不覆盖、不读取已有笔记** |
-| 重跑一次就重新扣一次钱 | 每一步都有缓存（分片原始返回、逐字稿、总结），**缓存即断点续跑** |
+| 听播客时的真实痛点                      | 这里的做法                                                        |
+| ------------------------------ | ------------------------------------------------------------ |
+| 听完就忘，想引用一句得回去拖进度条              | 逐字稿带**句级时间戳**；笔记里的每个要点、每句金句都挂着 `01:23:45`                    |
+| 谁说的分不清                         | 云端 ASR 带**说话人分离**（说话人 A / B），长音频分块后做全局标签对齐                   |
+| 3 小时节目本地转写要跑 1 小时以上            | 默认走云端，1.5 小时的节目实测**约 80 秒**出稿（本地 faster-whisper 仍是备选）        |
+| 总结里的「金句」经常是模型编的                | 每条金句都回原文 ±30 秒做**逐字匹配**，命中才算原话，命中不了降级标注成「模型概括」               |
+| 怕工具覆盖/弄脏已有的库                   | 默认 `create_only`：目标存在就停（退出码 11），**不覆盖、不读取已有笔记**              |
+| 重跑一次就重新扣一次钱                    | 每一步都有缓存（分片原始返回、逐字稿、总结），**缓存即断点续跑**                           |
 | 专有名词被写错（Vercel→Versel、多伊奇→多一起） | `hotwords.txt` 一行一个词，同时喂给云端的 `hotword` 与本地的 `initial_prompt` |
-| 总结风格不合口味 | 提示词在 `templates/summary_prompt.md`，**你自己改**，下次生效 |
+| 总结风格不合口味                       | 提示词在 `templates/summary_prompt.md`，**你自己改**，下次生效             |
 
 ---
 
 ## 特点
 
-**1. 缓存即断点续跑。** 每个 job 一个目录，
-`metadata.json / transcript.json / summary.json / receipt.json` 缺哪步补哪步。
+**1. 缓存即断点续跑。** 每个 job 一个目录，  
+`metadata.json / transcript.json / summary.json / receipt.json` 缺哪步补哪步。  
 中断后重跑同一条命令，已完成的步骤直接跳过，不重复调用、不重复计费。
 
-**2. 说话人分离是真的能用。** 20 分钟一个大块（上下文够长，专有名词不容易错），
-相邻块重叠 30 秒，用「时间重叠 + 同块互斥 + 复用空闲标签」把各块的局部标签
+**2. 说话人分离。** 20 分钟一个大块（上下文够长，专有名词不容易错），  
+相邻块重叠 30 秒，用「时间重叠 + 同块互斥 + 复用空闲标签」把各块的局部标签  
 对齐成全局的「说话人 A / B」。3 小时节目实测稳定收敛到 2 个说话人。
 
-**3. 不编造原话。** `summarize.py final` 会对每条 quote 做逐字校验，
+**3. 不编造原话。** `summarize.py final` 会对每条 quote 做逐字校验，  
 不命中就划到「模型概括」并明确标注——笔记里不会出现被当成原话的伪造引用。
 
-**4. 总结不额外花钱。** 读稿与综合都由**会话模型（你的 Agent）**完成，
-代码里没有任何外部对话模型调用。唯一会花钱的是**转写**（按音频时长计费）。
+**4. 总结不额外花钱。** 读稿与综合都由**会话模型（你的 Agent）**&#x5B8C;成，  
+代码里没有任何外部对话模型调用。唯一会花钱的是**转写**（按音频时长计费）。  
 （曾经有过接口版 Map-Reduce，实测又慢又烧钱，已彻底删除。）
 
 **5. 隐私红线写进代码。**
+
 - 不扫描磁盘找库：vault 路径只来自 `config.toml`，是占位符就拒绝写入；
 - 不读取 vault 里任何已有笔记，只做精确路径新建；
 - `safety.scan_vault / read_existing_notes` 一旦为 `true`，配置加载直接失败。
 
 **6. 安全是硬校验，不是注释。**
+
 - 密钥只存在于 `.env`（600），**不写进代码、配置或任何 md 文件**；
 - 密钥只发往 `asr.allowed_hosts` 里的主机，**改配置也发不出去**；
 - 逐字稿 / 节目简介 / RSS 描述里的「指示」一律当数据，不当指令（提示注入防护）；
@@ -63,17 +68,17 @@ python3 run.py --input "https://www.xiaoyuzhoufm.com/episode/xxxx" --config conf
 
 ## 支持的 Agent Harness
 
-遵循 **Agent Skills 开放标准**，同一份 `SKILL.md` 到处能用，脚本本身也不依赖任何框架
+遵循 **Agent Skills 开放标准**，同一份 `SKILL.md` 到处能用，脚本本身也不依赖任何框架  
 （去掉 `SKILL.md` 它就是一套纯 CLI）。
 
-| Harness | 安装位置 | 安装与调用 |
-|---|---|---|
-| **Claude Code** | `~/.claude/skills/`（用户）或 `.claude/skills/`（项目） | `./install.sh --harness claude`；`/podcast-to-obsidian` 或自动触发 |
-| **Codex** | `~/.agents/skills/`（并软链 `~/.codex/skills/`）或 `.agents/skills/` | `./install.sh --harness codex`；提示词里写 `$podcast-to-obsidian` 或 `/skills` |
-| **WorkBuddy** | `~/.workbuddy/skills/` | `./install.sh --harness workbuddy` |
-| 其它遵循标准的工具 / 纯 CLI | 任意目录 | `./install.sh --dir <路径>`，或直接 `python3 run.py …` |
+| Harness           | 安装位置                                                           | 安装与调用                                                         |
+| ----------------- | -------------------------------------------------------------- | ------------------------------------------------------------- |
+| **Claude Code**   | `~/.claude/skills/`（用户）或 `.claude/skills/`（项目）                 | `./install.sh --harness claude`；`/podscribe` 或自动触发            |
+| **Codex**         | `~/.agents/skills/`（并软链 `~/.codex/skills/`）或 `.agents/skills/` | `./install.sh --harness codex`；提示词里写 `$podscribe` 或 `/skills` |
+| **WorkBuddy**     | `~/.workbuddy/skills/`                                         | `./install.sh --harness workbuddy`                            |
+| 其它遵循标准的工具 / 纯 CLI | 任意目录                                                           | `./install.sh --dir <路径>`，或直接 `python3 run.py …`              |
 
-`install.sh` 会做三件事：拷脚本与模板、把 `SKILL.md` 里的路径占位符替换成真实安装路径、
+`install.sh` 会做三件事：拷脚本与模板、把 `SKILL.md` 里的路径占位符替换成真实安装路径、  
 按 harness 增删 frontmatter 字段。**已存在的 `config.toml` 和 `.env` 一律保留**，可放心重跑。
 
 各 harness 的权限、沙箱、子代理用法见 `adapters/claude-code.md` 与 `adapters/codex.md`。
@@ -90,12 +95,12 @@ python3 run.py --input "https://www.xiaoyuzhoufm.com/episode/xxxx" --config conf
 ### 配置
 
 ```bash
-git clone <你的仓库> podcast-to-obsidian && cd podcast-to-obsidian
+git clone <你的仓库> podscribe && cd podscribe
 cp .env.example .env && chmod 600 .env
 # 编辑 .env，填入：SILICONFLOW_API_KEY=sk-...
 ```
 
-想让 Claude Code / Codex 自动识别，跑一次 `./install.sh`（见上一节）；
+想让 Claude Code / Codex 自动识别，跑一次 `./install.sh`（见上一节）；  
 只在命令行用则跳过，直接看下面的「跑」。
 
 然后改 `config.toml` 里**唯一需要你填的东西**：
@@ -105,7 +110,7 @@ cp .env.example .env && chmod 600 .env
 path = "/absolute/path/to/your/obsidian/vault"
 ```
 
-其他默认值可以直接用。不想把真实路径提交进仓库，就把 `config.toml` 复制成
+其他默认值可以直接用。不想把真实路径提交进仓库，就把 `config.toml` 复制成  
 `config.local.toml`（已在 `.gitignore` 里）再用 `--config config.local.toml`。
 
 ### 跑
@@ -114,7 +119,7 @@ path = "/absolute/path/to/your/obsidian/vault"
 python3 run.py --input "<播客单集链接>" --config config.toml
 ```
 
-总结由会话模型完成，所以编排会在切好分块后停下来（输出 `waiting_for: session_summary`）。
+总结由会话模型完成，所以编排会在切好分块后停下来（输出 `waiting_for: session_summary`）。  
 Agent 模式下我会自动接着做；纯 CLI 模式按下面分步走。
 
 ### 分步命令
@@ -151,52 +156,52 @@ vault 里新增两个文件（+ 可选的字幕）：
 播客/逐字稿/2026-10-03 EP752 #752.标题 [job-id].vtt   # WebVTT 字幕
 ```
 
-主笔记结构：YAML frontmatter（`source / duration / speakers / asr_model / word_count …`）
-→ 信息表 → TL;DR → 分层要点（带证据时间戳）→ 金句（逐字命中）→ 行动项表
-→ 章节时间表 → 原始简介 → 完整逐字稿链接。
+主笔记结构：YAML frontmatter（`source / duration / speakers / asr_model / word_count …`）  
+→ 信息表 → TL;DR → 分层要点（带证据时间戳）→ 金句（逐字命中）→ 行动项表  
+→ 章节时间表 → 原始简介 → 完整逐字稿链接。  
 说话人标签、跨块对齐的不确定性会在笔记里明确写出来，不装作确定。
 
 ---
 
 ## 文件说明
 
-| 文件 | 职责 |
-|---|---|
-| `SKILL.md` | Agent Skill 定义（触发语、用法、红线）。给 Agent 看的说明书 |
-| `core.py` | JSON 协议、配置校验、路径安全、原子无覆盖写入、dotenv 解析 |
-| `download.py` | 喜马拉雅 / 小宇宙 / 通用 RSS / 音频直链 / 本地文件 |
-| `transcribe.py` | 云端 ASR（默认，带说话人分离）或本地 faster-whisper |
-| `summarize.py` | plan / show / add / final / prompt；**不做任何外部模型调用** |
-| `publish.py` | 渲染模板 + 原子写入 vault |
-| `run.py` | 编排：按缓存跳过已完成步骤 |
-| `tests.py` | 35 项回归测试（不联网、不碰真实库） |
-| `config.toml` | 唯一必填项是 `vault.path` |
-| `templates/note.md` | 笔记模板（`{{token}}` 占位） |
-| `templates/summary_prompt.md` | **总结提示词，可自己改**（除「硬性约束」一节） |
-| `hotwords.txt` | 专有名词词表，一行一个 |
-| `install.sh` | 多 harness 安装器（Claude Code / Codex / WorkBuddy / 自定义目录） |
-| `adapters/` | 各 harness 的安装位置、权限、沙箱与调用方式 |
-| `CHANGELOG.md` | 三轮评审的完整修改日志 |
-| `.env.example` | 密钥文件模板（真身 `.env` 已被 git 忽略） |
+| 文件                            | 职责                                                     |
+| ----------------------------- | ------------------------------------------------------ |
+| `SKILL.md`                    | Agent Skill 定义（触发语、用法、红线）。给 Agent 看的说明书                |
+| `core.py`                     | JSON 协议、配置校验、路径安全、原子无覆盖写入、dotenv 解析                    |
+| `download.py`                 | 喜马拉雅 / 小宇宙 / 通用 RSS / 音频直链 / 本地文件                      |
+| `transcribe.py`               | 云端 ASR（默认，带说话人分离）或本地 faster-whisper                    |
+| `summarize.py`                | plan / show / add / final / prompt；**不做任何外部模型调用**      |
+| `publish.py`                  | 渲染模板 + 原子写入 vault                                      |
+| `run.py`                      | 编排：按缓存跳过已完成步骤                                          |
+| `tests.py`                    | 35 项回归测试（不联网、不碰真实库）                                    |
+| `config.toml`                 | 唯一必填项是 `vault.path`                                    |
+| `templates/note.md`           | 笔记模板（`{{token}}` 占位）                                   |
+| `templates/summary_prompt.md` | **总结提示词，可自己改**（除「硬性约束」一节）                              |
+| `hotwords.txt`                | 专有名词词表，一行一个                                            |
+| `install.sh`                  | 多 harness 安装器（Claude Code / Codex / WorkBuddy / 自定义目录） |
+| `adapters/`                   | 各 harness 的安装位置、权限、沙箱与调用方式                             |
+| `CHANGELOG.md`                | 三轮评审的完整修改日志                                            |
+| `.env.example`                | 密钥文件模板（真身 `.env` 已被 git 忽略）                            |
 
 脚本之间用**stdout 单行 JSON**通信，诊断信息走 stderr，退出码有语义：
 
-| 码 | 含义 | 码 | 含义 |
-|---|---|---|---|
-| 0 | 成功 | 9 | API 错误（含缺 key） |
-| 2 | 输入/参数错误 | 10 | 校验失败 |
-| 3 | 配置错误（含 vault 占位符） | 11 | 目标已存在，拒绝覆盖 |
-| 4 | 网络错误 | 12 | 文件系统错误 |
-| 5 | 付费内容，已停 | 13 | 隐私/安全红线被触发 |
-| 6 | 媒体工具错误 | 7 | 转写失败 |
+| 码 | 含义                | 码  | 含义             |
+| - | ----------------- | -- | -------------- |
+| 0 | 成功                | 9  | API 错误（含缺 key） |
+| 2 | 输入/参数错误           | 10 | 校验失败           |
+| 3 | 配置错误（含 vault 占位符） | 11 | 目标已存在，拒绝覆盖     |
+| 4 | 网络错误              | 12 | 文件系统错误         |
+| 5 | 付费内容，已停           | 13 | 隐私/安全红线被触发     |
+| 6 | 媒体工具错误            | 7  | 转写失败           |
 
 ---
 
 ## 安全设计（发布前请读一遍）
 
-- **`.env` 绝不入库**：`.gitignore` 已排除 `.env` 与 `.env.*`（只放行 `.env.example`）。
+- **`.env` 绝不入库**：`.gitignore` 已排除 `.env` 与 `.env.*`（只放行 `.env.example`）。  
   推送前用 `git status --ignored` 确认一次。
-- 密钥读取顺序：`$PODCAST_ENV_FILE` → `<skill>/.env` → `~/.config/podcast-to-obsidian/.env`；
+- 密钥读取顺序：`$PODCAST_ENV_FILE` → `<skill>/.env` → `~/.config/podscribe/.env`；  
   进程环境变量优先级最高。解析是内置实现（支持注释、`export` 前缀、引号），**零第三方依赖**。
 - 如果 key 曾经出现在聊天记录或日志里，**去服务商后台轮换**，别只是删文件。
 - 仓库里不含任何真实密钥、真实 vault 路径或用户名。
@@ -205,7 +210,7 @@ vault 里新增两个文件（+ 可选的字幕）：
 
 ## 已知限制
 
-- 说话人是**匿名聚类 ID**，不是声纹识别；3 人以上的节目可能错标，
+- 说话人是**匿名聚类 ID**，不是声纹识别；3 人以上的节目可能错标，  
   笔记里「主播 / 嘉宾」是依据内容的推断。
 - 云端热词是否被接口真正采用未验证（不支持时会自动退回，不影响主流程）。
 - 小宇宙走页面 `og:audio` + `__NEXT_DATA__`，付费/私密单集拿不到直链。

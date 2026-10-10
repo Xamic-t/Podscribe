@@ -327,8 +327,9 @@ def exclusive_write(target: Path, text: str) -> None:
 
 ENV_SEARCH_PATHS = [
     SKILL_ROOT / ".env",                             # 标准 dotenv 位置，优先
-    Path("~/.config/podcast-to-obsidian/.env"),      # 库外备份位置
-    Path("~/.config/podcast-to-obsidian/env"),       # 旧命名，兼容
+    Path("~/.config/podscribe/.env"),                # 库外备份位置
+    Path("~/.config/podcast-to-obsidian/.env"),      # 更名前的旧位置，兼容
+    Path("~/.config/podcast-to-obsidian/env"),       # 更旧的命名，兼容
 ]
 
 
