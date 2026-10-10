@@ -1,5 +1,24 @@
 # 修改日志
 
+## [2.4.1] · 2026-10-10 · README 重写 + 补 LICENSE
+
+用 [Humanizer-zh](https://github.com/op7418/Humanizer-zh)（已装到 `~/.workbuddy/skills/humanizer-zh`
+与 `~/.claude/skills/humanizer-zh`）的编辑规则重写 README，去掉 AI 味：删掉「不是 X 而是 Y」
+式的假对比、宣传式拔高、装饰性粗体，保留全部事实、限定、代码、命令与路径。
+
+| 改动 | 说明 |
+|---|---|
+| 安装提到最前 | 依赖 → 取代码 → `./install.sh` → 填 `.env` 与 `vault.path` → 一条命令开跑 |
+| 补上「怎么工作的」 | 四步流水线，说清哪一步花钱、哪一步由 Agent 做 |
+| 补上「用什么模型」 | 表格列出云端 ASR / 本地 faster-whisper / 总结三者的费用；写明**要先申请 API key** |
+| 强调 ASR 免费 | 硅基流动定价页把 XingChenASR 系列（含 `XingChenASR-Diarize-V3.0`）标为免费；同时注明免费名单会调整、以官网为准 |
+| 补上本地方案 | `--engine local` 走 faster-whisper，不花钱但慢、无说话人分离 |
+| 补上总结由谁做 | 会话里的 Agent 完成，超 2 小时可派子代理分块压缩，不调用外部对话模型 |
+| 补上提示词可自定义 | `templates/summary_prompt.md` 除「硬性约束」一节外可自己改，附可选开关清单 |
+| 补上输出包含原文 | 主笔记是总结，另存整期逐字稿与 VTT 字幕 |
+| 「已知限制」改名为「优化方向」 | 语气从「做不到」改成「还可以做」，内容不变 |
+| 新增 `LICENSE` | MIT，版权署名写成 `podscribe contributors`，方便替换成你自己的名字 |
+
 ## [2.4.0] · 2026-10-10 · 更名为 podscribe
 
 `podcast-to-obsidian` 是说明书不是产品名，正式更名为 **podscribe**
@@ -84,7 +103,7 @@ job 目录里存着音频与逐字稿的绝对路径，改缓存根目录会让�
 
 - `config.toml` / `core.py` DEFAULTS 的 `runtime.python` 改成 `~` 开头；
   `transcribe.py` 读取时补 `expanduser()`（原来只认绝对路径）。
-- `SKILL.md` 示例里的 `PY=/Users/xamic/...` 改成 `PY=python3`。
+- `SKILL.md` 示例里的 `PY=` 原来是本机的绝对路径，改成 `PY=python3`。
 - 新增 `core.tool_path()`：配置里的 `ffmpeg` / `ffprobe` 绝对路径不存在时，
   回落到 PATH 里的同名命令（换台机器不会因为 Homebrew 前缀不同就报 TOOL_MISSING）。
 - `.gitignore` 补 `*.pyc`、`config.local.toml`（填了真实 vault 路径的私有副本）、
