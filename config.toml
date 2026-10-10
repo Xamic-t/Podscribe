@@ -1,0 +1,67 @@
+schema_version = 2
+
+# ─────────────────────────────────────────────
+# 唯一需要你填的东西：Obsidian 库绝对路径
+# ─────────────────────────────────────────────
+[vault]
+path = "PLACEHOLDER_VAULT_PATH"
+output_subdir = "播客"
+transcript_subdir = "逐字稿"
+# create_only = 已存在就停（默认，绝不覆盖你已有笔记）
+# upsert      = 已存在则替换（仅在你明确要求时使用）
+publish_strategy = "create_only"
+
+[runtime]
+cache_root = "~/.cache/podcast-to-obsidian"
+# python 只在 --engine local 时用（装了 faster-whisper 的 venv）；支持 ~ 开头
+python = "~/.cache/video-to-subtitle-summary/faster-whisper-venv/bin/python"
+# ffmpeg / ffprobe 填绝对路径；找不到时会自动回落到 PATH 里的同名命令
+ffmpeg = "/opt/homebrew/bin/ffmpeg"
+ffprobe = "/opt/homebrew/bin/ffprobe"
+
+[asr]
+# cloud = 云端（默认：说话人分离 + 句级时间戳）  local = 本地 faster-whisper
+engine = "cloud"
+language = "zh"
+cloud_model = "XingChenAGI/XingChenASR-Diarize-V3.0"
+cloud_base_url = "https://api.siliconflow.cn/v1"
+# 密钥只发往这些主机。换服务商时把新域名加进来，否则请求会被直接拒绝（防止配置被改指向）
+allowed_hosts = ["api.siliconflow.cn"]
+api_key_env = "SILICONFLOW_API_KEY"
+chunk_minutes = 20          # 大块上传，避免短上下文导致专有名词出错
+overlap_seconds = 30        # 重叠用于跨块对齐说话人
+concurrency = 4
+timeout_seconds = 600
+send_hotword = true         # 云端提交热词；接口不支持时会自动退回不带热词
+initial_prompt_prefix = "以下是中文播客，可能涉及以下专有名词："
+local_model = "mobiuslabsgmbh/faster-whisper-large-v3-turbo"
+local_fast_model = "small"
+
+[summary]
+# 只有 session 一种模式：由会话模型（我）读稿总结，不调用任何外部对话模型。
+# 长节目可让子 Agent 逐块压缩，那也算在会话里，不会额外扣 API 的钱。
+mode = "session"
+block_minutes = 15          # 读稿分块时长
+# 总结提示词：直接在 templates/summary_prompt.md 里改，改完下次生效。
+# 除了「硬性约束」那节（动了会被校验拦下），其余随便改。
+prompt_file = "templates/summary_prompt.md"
+target_min_chars = 800
+target_max_chars = 1500
+quote_match_window_seconds = 30
+
+[retention]
+# true  = 转写完把音频归档到 <缓存>/音频库/<job_id>.<ext>（默认，方便换模型重转）
+# false = 转写完直接删除下载的音频（用户自己的本地文件两种情况都不动）
+keep_audio = true
+audio_archive_dir = "音频库"
+keep_vtt = true
+# 归档后的音频用 run.py audio list / purge 查看与清理
+
+[filename]
+date_prefix = true
+max_title_chars = 80
+
+[safety]
+# 以下必须为 false：不扫描、不读取你的库
+scan_vault = false
+read_existing_notes = false

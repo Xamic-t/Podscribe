@@ -1,0 +1,13 @@
+# 术语词表：一行一个，# 开头为注释。
+# 每期由会话模型抽取候选 → 你确认后追加到这里 → 下一期作为 ASR 提示词生效。
+# 只走 initial_prompt，不会传给 faster-whisper 的 hotwords 参数（那会打断长音频上下文）。
+Vercel
+vibe coding
+Opus
+Sonnet
+Next.js
+harness
+agent
+CLI
+Rust
+Jeff Dean

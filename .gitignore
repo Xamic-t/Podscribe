@@ -1,0 +1,18 @@
+# 密钥：绝不入库
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# 本地私有配置（填了真实 vault 路径的副本，用这个名字就不会被 git 跟踪）
+config.local.toml
+
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
