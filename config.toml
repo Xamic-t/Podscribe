@@ -25,8 +25,9 @@ ffprobe = "/opt/homebrew/bin/ffprobe"
 # cloud = 云端（默认：说话人分离 + 句级时间戳）  local = 本地 faster-whisper
 engine = "cloud"
 language = "zh"
-cloud_model = "XingChenAGI/XingChenASR-Diarize-V3.0"
-cloud_base_url = "https://api.siliconflow.cn/v1"
+# ★ 必填：ASR 用哪个模型、打哪个接口。仓库里这两项是占位符，不填会在转写前报错（退出码 3）
+cloud_model = "FILL_ME_ASR_MODEL"
+cloud_base_url = "FILL_ME_BASE_URL"
 # 密钥只发往这些主机。换服务商时把新域名加进来，否则请求会被直接拒绝（防止配置被改指向）
 allowed_hosts = ["api.siliconflow.cn"]
 api_key_env = "SILICONFLOW_API_KEY"

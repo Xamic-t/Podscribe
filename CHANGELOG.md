@@ -1,5 +1,27 @@
 # 修改日志
 
+## [2.5.0] · 2026-10-11 · ASR 配置必须自己填（留空 + 硬校验）
+
+发布版 `config.toml` 以前带着默认的模型和接口地址，clone 下来就能跑，
+使用者根本不知道自己正在用哪个模型、花的是谁的钱。现在改成**必须自己填**。
+
+| 改动 | 说明 |
+|---|---|
+| 发布版留空 | `asr.cloud_model = "FILL_ME_ASR_MODEL"`、`asr.cloud_base_url = "FILL_ME_BASE_URL"`；`core.DEFAULTS` 同步改成占位符 |
+| 新增 `core.require_asr_config()` | 占位符（含空串、`FILL_ME*`、`PLACEHOLDER*`）一律拦下，抛 `ASR_NOT_CONFIGURED`（退出码 3），报错里写清该填什么、以及 `--engine local` 这条退路 |
+| 调用点 | `transcribe.py` 走云端转写前检查；本地引擎不受影响。`run.py` 通过既有的 `raise_from` 透传退出码 3 |
+| 必填项从 1 个变 3 个 | `vault.path` + `asr.cloud_model` + `asr.cloud_base_url`；两份 README 的安装步骤改成「填三处配置」并说明两种报错 |
+| 同步脚本 | `sync-podscribe-repo.sh` 除 vault 路径外，也把这两项还原成占位符（源目录里是填好的真实值） |
+
+验证：
+- 占位符配置跑 `transcribe.py` → `ASR_NOT_CONFIGURED`，退出码 3；
+- 同样配置跑 `run.py` → 退出码 3（透传正常）；
+- 新增 3 项测试（占位符拒、空串拒、填了放行），测试总数 38，全绿。
+
+顺带修的：用户填了真实 vault 路径后，`test_run_nonzero_when_publish_fails` 失效了
+（publish 不再撞 `VAULT_PLACEHOLDER`）。测试改成自己显式把 vault 设成占位符，
+不再依赖本机配置填了什么。
+
 ## [2.4.2] · 2026-10-11 · 英文 README + 中英切换
 
 | 改动 | 说明 |

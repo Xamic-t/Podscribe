@@ -43,20 +43,34 @@ git clone <your-repo> podscribe && cd podscribe
 
 Skip this step if you only use the command line.
 
-### 4. Fill in two things
+### 4. Fill in three things
+
+The shipped `config.toml` has three placeholders, and **nothing runs until you fill them**. This is deliberate: which model you use and whose credits it spends is your call.
 
 ```bash
 cp .env.example .env && chmod 600 .env
 ```
 
-Put `SILICONFLOW_API_KEY=sk-...` in `.env`. Then set the vault path in `config.toml`, the one required field:
+First, put `SILICONFLOW_API_KEY=sk-...` in `.env` (generate it in the SiliconFlow dashboard after sign-up; free models still need a key).
+
+Second, the vault path in `config.toml`:
 
 ```toml
 [vault]
 path = "/absolute/path/to/your/obsidian/vault"
 ```
 
-While the vault path is still `PLACEHOLDER_VAULT_PATH`, `publish` refuses to write (exit code 3). If you would rather not commit the real path, copy `config.toml` to `config.local.toml` (already in `.gitignore`) and pass `--config config.local.toml`.
+Third, the ASR model and endpoint:
+
+```toml
+[asr]
+cloud_model = "XingChenAGI/XingChenASR-Diarize-V3.0"   # pick one from the pricing page; this one is listed as free
+cloud_base_url = "https://api.siliconflow.cn/v1"
+```
+
+Missing any of the three stops the run with exit code 3: `VAULT_PLACEHOLDER` for the vault, `ASR_NOT_CONFIGURED` for the ASR fields, and the message tells you what to put where. If you would rather skip the cloud, add `--engine local` to use local faster-whisper, and those two ASR fields are not needed.
+
+If you would rather not commit the real path, copy `config.toml` to `config.local.toml` (already in `.gitignore`) and pass `--config config.local.toml`.
 
 ### 5. Run it
 
@@ -102,7 +116,7 @@ Only step 2 costs money, and with the local engine even that is free. Step 3 is 
 | Transcription (fallback) | Local faster-whisper                                                                                                                             | Free, but slow: a 3-hour episode takes hours on a laptop CPU, and there is no diarization                  |
 | Summarization        | The agent in your session, or a subagent it spawns                                                                                                 | No external chat model is called, so no extra billing                                                      |
 
-**You need a key before the cloud path works.** Sign up at SiliconFlow, generate a key, put it in `.env`. No code changes needed.
+**You need a key before the cloud path works.** Sign up at SiliconFlow, generate a key, put it in `.env`. No code changes needed. The model and endpoint in `config.toml` must be filled in too, otherwise transcription stops before it starts (`ASR_NOT_CONFIGURED`, exit code 3).
 
 Another provider works too: change `asr.cloud_base_url`, `api_key_env`, and `allowed_hosts` in `config.toml`. The key is only sent to hosts in `allowed_hosts` — that is enforced in code, so editing config cannot send it elsewhere.
 
@@ -204,7 +218,7 @@ python3 tests.py                                                   # 35 regressi
 | `publish.py`                    | Renders the template and writes into the vault atomically          |
 | `run.py`                        | Orchestration; skips steps already cached                          |
 | `tests.py`                      | 35 regression tests (no network, no real vault)                    |
-| `config.toml`                   | `vault.path` is the only required field                            |
+| `config.toml`                   | Three required fields: `vault.path`, `asr.cloud_model`, `asr.cloud_base_url` |
 | `templates/note.md`             | Note template (`{{token}}` placeholders)                           |
 | `templates/summary_prompt.md`   | The summary prompt; editable except the "hard constraints" section |
 | `hotwords.txt`                  | Proper noun list, one per line                                     |
@@ -219,7 +233,7 @@ The scripts talk over single-line JSON on stdout, with diagnostics on stderr. Ex
 | ---- | ------------------------------ | ---- | -------------------------- |
 | 0    | Success                        | 9    | API error (missing key too) |
 | 2    | Bad input / arguments          | 10   | Validation failed          |
-| 3    | Config error (vault placeholder) | 11 | Target exists, refusing to overwrite |
+| 3    | Config error (vault or ASR unset) | 11 | Target exists, refusing to overwrite |
 | 4    | Network error                  | 12   | Filesystem error           |
 | 5    | Paid content, stopped          | 13   | Privacy / safety line hit  |
 | 6    | Media tool error               | 7    | Transcription failed       |

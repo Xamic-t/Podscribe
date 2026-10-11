@@ -102,8 +102,9 @@ DEFAULTS = {
                 "python": "~/.cache/video-to-subtitle-summary/faster-whisper-venv/bin/python",
                 "ffmpeg": "/opt/homebrew/bin/ffmpeg", "ffprobe": "/opt/homebrew/bin/ffprobe"},
     "asr": {"engine": "cloud", "language": "zh",
-            "cloud_model": "XingChenAGI/XingChenASR-Diarize-V3.0",
-            "cloud_base_url": "https://api.siliconflow.cn/v1",
+            # 这两项故意留占位符：ASR 用哪个模型、打哪个接口，必须由使用者自己决定并填进来
+            "cloud_model": "FILL_ME_ASR_MODEL",
+            "cloud_base_url": "FILL_ME_BASE_URL",
             "allowed_hosts": ["api.siliconflow.cn"],
             "api_key_env": "SILICONFLOW_API_KEY",
             "chunk_minutes": 20, "overlap_seconds": 30, "concurrency": 4,
@@ -203,6 +204,35 @@ def resolve_job_dir(cfg: dict, raw: str, must_exist: bool = True) -> Path:
     if must_exist and not jd.is_dir():
         raise Fail("config", "JOB_NOT_FOUND", f"找不到 job 目录：{jd}", EXIT_BAD_INPUT)
     return jd
+
+
+# 这些值一律当成「没填」，不拿去发请求
+ASR_PLACEHOLDERS = {"", "FILL_ME", "FILL_ME_ASR_MODEL", "FILL_ME_BASE_URL",
+                    "PLACEHOLDER", "PLACEHOLDER_VAULT_PATH", "CHANGEME", "<YOUR_MODEL>"}
+
+REQUIRED_ASR_FIELDS = ("cloud_model", "cloud_base_url")
+
+
+def require_asr_config(cfg: dict) -> None:
+    """云端转写前先确认 ASR 的模型与接口地址是使用者自己填的。
+
+    发布版 config.toml 里这两项是占位符，没填就停（退出码 3），
+    而不是拿一个默认值去打请求——用哪个模型、花不花钱，得是他自己的决定。
+    """
+    asr = cfg.get("asr") or {}
+    missing = [k for k in REQUIRED_ASR_FIELDS
+               if str(asr.get(k, "")).strip().upper() in ASR_PLACEHOLDERS]
+    if not missing:
+        return
+    raise Fail("config", "ASR_NOT_CONFIGURED",
+               "config.toml 里 " + "、".join(f"asr.{k}" for k in missing)
+               + " 还是占位符，填了才能转写：\n"
+               "  · asr.cloud_model    去硅基流动定价页挑一个 ASR 模型"
+               "（推荐 XingChenAGI/XingChenASR-Diarize-V3.0，定价页目前标为免费）\n"
+               "  · asr.cloud_base_url 填 https://api.siliconflow.cn/v1，"
+               "并把它的主机名放进 asr.allowed_hosts\n"
+               "不想用云端就加 --engine local，走本地 faster-whisper。",
+               EXIT_BAD_CONFIG)
 
 
 def cache_root(cfg: dict) -> Path:

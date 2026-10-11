@@ -357,6 +357,7 @@ def main() -> None:
         segments, warns = local_transcribe(cfg, meta, jd, model)
         engine_name = f"local:{model}"
     else:
+        C.require_asr_config(cfg)   # 模型和接口地址必须自己填过，不能拿默认值去打请求
         model = args.model or cfg["asr"]["cloud_model"]
         segments, warns = cloud_transcribe(cfg, meta, jd, model)
         engine_name = f"cloud:{model}"

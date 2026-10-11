@@ -43,20 +43,34 @@ install.sh 会拷脚本和模板、把 `SKILL.md` 里的路径占位符换成真
 
 只在命令行用就跳过这一步。
 
-### 4. 填两处配置
+### 4. 填三处配置
+
+仓库里的 `config.toml` 有三项是占位符，**不填就跑不起来**，这是故意的——用哪个模型、花谁的钱，得你自己定。
 
 ```bash
 cp .env.example .env && chmod 600 .env
 ```
 
-在 `.env` 里填 `SILICONFLOW_API_KEY=sk-...`。然后在 `config.toml` 里填 vault 路径，这是唯一必填项：
+第一处，`.env` 里填 `SILICONFLOW_API_KEY=sk-...`（注册硅基流动后在后台生成，免费模型也要 key）。
+
+第二处，`config.toml` 里的 vault 路径：
 
 ```toml
 [vault]
 path = "/absolute/path/to/your/obsidian/vault"
 ```
 
-vault 路径仍是 `PLACEHOLDER_VAULT_PATH` 时，publish 会拒绝写入（退出码 3）。不想把真实路径提交进仓库，就把 `config.toml` 复制成 `config.local.toml`（已在 `.gitignore` 里），再用 `--config config.local.toml` 指定。
+第三处，ASR 的模型和接口地址：
+
+```toml
+[asr]
+cloud_model = "XingChenAGI/XingChenASR-Diarize-V3.0"   # 去定价页挑一个，推荐这个，目前标为免费
+cloud_base_url = "https://api.siliconflow.cn/v1"
+```
+
+这三项没填会直接停，退出码 3：vault 是 `VAULT_PLACEHOLDER`，ASR 是 `ASR_NOT_CONFIGURED`，报错里会写清该填什么。不想用云端就加 `--engine local`，走本地 faster-whisper，不需要填这两项。
+
+不想把真实路径提交进仓库，就把 `config.toml` 复制成 `config.local.toml`（已在 `.gitignore` 里），再用 `--config config.local.toml` 指定。
 
 ### 5. 跑
 
@@ -102,7 +116,7 @@ python3 run.py --input "<播客单集链接>" --config config.toml
 | 转写（备选）  | 本地 faster-whisper                                                                                | 不花钱，但慢：3 小时节目在本机 CPU 上以小时计，且没有说话人分离                     |
 | 总结      | 会话里的 Agent，或它派的子代理                                                                              | 不调用外部对话模型，不额外计费                                        |
 
-**先有 key 才能用云端。** 注册硅基流动账号生成一个 key，写进 `.env` 即可，不需要改代码。
+**先有 key 才能用云端。** 注册硅基流动账号生成一个 key，写进 `.env` 即可，不需要改代码。模型和接口地址也得在 `config.toml` 里填好，否则转写前就停（`ASR_NOT_CONFIGURED`，退出码 3）。
 
 换别的供应商也能跑：`config.toml` 里改 `asr.cloud_base_url`、`api_key_env` 和 `allowed_hosts`。密钥只发往 `allowed_hosts` 里的主机，是代码里的硬校验，改配置也发不出去。
 
@@ -206,7 +220,7 @@ python3 tests.py                                                   # 35 项回�
 | `publish.py`                  | 渲染模板 + 原子写入 vault                           |
 | `run.py`                      | 编排，按缓存跳过已完成步骤                               |
 | `tests.py`                    | 35 项回归测试（不联网、不碰真实库）                         |
-| `config.toml`                 | 唯一必填项是 `vault.path`                          |
+| `config.toml`                 | 三项必填：`vault.path`、`asr.cloud_model`、`asr.cloud_base_url` |
 | `templates/note.md`           | 笔记模板（`{{token}}` 占位）                        |
 | `templates/summary_prompt.md` | 总结提示词，除「硬性约束」一节外可自己改                        |
 | `hotwords.txt`                | 专有名词词表，一行一个                                 |
@@ -221,7 +235,7 @@ python3 tests.py                                                   # 35 项回�
 | - | --------------- | -- | ----------- |
 | 0 | 成功              | 9  | API 错误（含缺 key）|
 | 2 | 输入/参数错误         | 10 | 校验失败        |
-| 3 | 配置错误（含 vault 占位符）| 11 | 目标已存在，拒绝覆盖  |
+| 3 | 配置错误（vault / ASR 没填）| 11 | 目标已存在，拒绝覆盖  |
 | 4 | 网络错误            | 12 | 文件系统错误      |
 | 5 | 付费内容，已停         | 13 | 隐私/安全红线被触发  |
 | 6 | 媒体工具错误          | 7  | 转写失败        |

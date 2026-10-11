@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import importlib.util
+import re
 import subprocess
 import sys
 import tempfile
@@ -245,6 +246,32 @@ class Round2Fixes(unittest.TestCase):
         self.assertEqual(ctx.exception.exit_code, C.EXIT_BAD_CONFIG)
 
 
+class AsrConfigGate(unittest.TestCase):
+    """ASR 模型与接口地址必须是使用者自己填的，占位符一律拦下。"""
+
+    def setUp(self):
+        self.cfg = C.load_config(Path(__file__).resolve().parent / "config.toml")
+
+    def test_placeholder_rejected(self):
+        self.cfg["asr"]["cloud_model"] = "FILL_ME_ASR_MODEL"
+        self.cfg["asr"]["cloud_base_url"] = "FILL_ME_BASE_URL"
+        with self.assertRaises(C.Fail) as ctx:
+            C.require_asr_config(self.cfg)
+        self.assertEqual(ctx.exception.code, "ASR_NOT_CONFIGURED")
+        self.assertEqual(ctx.exception.exit_code, C.EXIT_BAD_CONFIG)
+
+    def test_empty_rejected(self):
+        self.cfg["asr"]["cloud_model"] = ""
+        self.cfg["asr"]["cloud_base_url"] = "https://api.siliconflow.cn/v1"
+        with self.assertRaises(C.Fail):
+            C.require_asr_config(self.cfg)
+
+    def test_filled_passes(self):
+        self.cfg["asr"]["cloud_model"] = "XingChenAGI/XingChenASR-Diarize-V3.0"
+        self.cfg["asr"]["cloud_base_url"] = "https://api.siliconflow.cn/v1"
+        self.assertIsNone(C.require_asr_config(self.cfg))
+
+
 class Round3Fixes(unittest.TestCase):
     """第三轮复核 N1–N7 的回归用例。"""
 
@@ -330,6 +357,9 @@ class StdinPayload(unittest.TestCase):
         base = (Path(__file__).resolve().parent / "config.toml").read_text(encoding="utf-8")
         base = base.replace('cache_root = "~/.cache/podcast-to-obsidian"',
                             f'cache_root = "{self.tmp}"')
+        # 不依赖本机填了什么：这一条用例就是要 vault 仍是占位符时 publish 失败
+        base = re.sub(r'^path = ".*"$', 'path = "PLACEHOLDER_VAULT_PATH"',
+                      base, count=1, flags=re.M)
         self.conf = self.tmp / "config.toml"
         self.conf.write_text(base, encoding="utf-8")
         self.jd = C.job_dir(C.load_config(self.conf), "xm-1")

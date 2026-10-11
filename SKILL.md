@@ -63,6 +63,10 @@ $PY $SKILL/publish.py    --job-dir <dir> --config $CONF           # 写库
 相邻块重叠 30 秒，用时间重叠把各块局部标签对齐成全局「说话人 A / B」。
 每条分块的原始返回缓存在 `<job>/raw/`，重跑不重复计费。
 
+**`asr.cloud_model` 与 `asr.cloud_base_url` 必须由使用者填好才能转写**，仓库里是占位符；
+没填就停（`ASR_NOT_CONFIGURED`，退出码 3），不要替他填一个默认值——用哪个模型、花不花钱是他的决定。
+想跳过这一步就加 `--engine local`。
+
 **密钥只放在 env 文件里，绝不写进代码、config.toml 或任何 md 文件。**
 
 标准 `.env` + dotenv 约定，文件在 skill 根目录（已 600）：
