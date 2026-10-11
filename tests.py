@@ -6,6 +6,8 @@
 from __future__ import annotations
 
 import importlib.util
+import json
+import os
 import re
 import subprocess
 import sys
@@ -387,6 +389,106 @@ class StdinPayload(unittest.TestCase):
         proc = self._call("run.py", "--job-dir", "xm-1", "--config", str(self.conf))
         self.assertNotEqual(proc.returncode, 0, proc.stdout)
         self.assertIn("VAULT_PLACEHOLDER", proc.stdout)
+
+
+class SetupFlow(unittest.TestCase):
+    """首次配置：setup.py 两个问题 + config.local.toml 叠加语义。"""
+
+    def setUp(self):
+        self.skill = Path(__file__).resolve().parent
+        self.tmp = Path(tempfile.mkdtemp())
+        self.base = self.tmp / "config.toml"
+        self.base.write_text((self.skill / "config.toml").read_text(encoding="utf-8"),
+                             encoding="utf-8")
+        self.local = self.tmp / "config.local.toml"
+        self.envf = self.tmp / ".env"
+        self.envf.write_text("", encoding="utf-8")   # 空文件：隔离真实的 .env，测试不读它
+        self.vault = self.tmp / "vault"
+        self.vault.mkdir()
+        self.env = {**os.environ, "PODCAST_ENV_FILE": str(self.envf)}
+        self.env.pop("SILICONFLOW_API_KEY", None)
+
+    def _run(self, *args, stdin=None):
+        return subprocess.run([sys.executable, str(self.skill / "setup.py"), *args],
+                              input=stdin, text=True, capture_output=True, env=self.env)
+
+    def _json(self, proc) -> dict:
+        return json.loads(proc.stdout.strip().splitlines()[-1])
+
+    def _common(self):
+        return ["--config", str(self.base), "--local-config", str(self.local),
+                "--env-file", str(self.envf)]
+
+    def test_shipped_template_has_no_private_path(self):
+        """防回归：模板里不能出现真实 vault 路径或用户名。"""
+        text = (self.skill / "config.toml").read_text(encoding="utf-8")
+        self.assertIn("PLACEHOLDER_VAULT_PATH", text)
+        self.assertNotIn("/Users/", text)
+        self.assertNotIn("Xamic", text)
+
+    def test_check_reports_what_is_missing(self):     # --check 恒为 0，只报告
+        proc = self._run(*self._common(), "--check")
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        data = self._json(proc)
+        self.assertTrue(data["needs_setup"])
+        self.assertIn("vault_path", data["missing"])
+        self.assertIn("api_key", data["missing"])
+        self.assertNotIn("asr_config", data["missing"])   # 已预填硅基流动
+        self.assertEqual(Path(data["api_key"]["env_file"]).resolve(), self.envf.resolve())
+        self.assertIsNone(data["api_key"]["tail"])        # 没有读到真实密钥
+
+    def test_vault_is_written_to_local_config(self):
+        proc = self._run(*self._common(), "--vault", str(self.vault))
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        cfg = C.load_config(self.base)                    # 本地文件自动叠加
+        self.assertEqual(cfg["vault"]["path"], str(self.vault.resolve()))
+
+    def test_vault_rejects_missing_dir(self):
+        proc = self._run(*self._common(), "--vault", str(self.tmp / "nope"))
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("VAULT_NOT_FOUND", proc.stdout)
+        self.assertFalse(self.local.exists())
+
+    def test_key_never_echoed(self):
+        # 刻意不用 sk- 开头的形状：这样仓库的「敏感信息复扫」不会把它误报成真密钥
+        secret = "podscribe-test-key-not-a-secret-0001"
+        proc = self._run(*self._common(), "--key-stdin", stdin=secret)
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertNotIn(secret, proc.stdout)             # 全文绝不出现
+        self.assertNotIn(secret, proc.stderr)
+        self.assertIn("…0001", self._json(proc)["api_key_tail"])
+        self.assertIn(f"SILICONFLOW_API_KEY={secret}",
+                      self.envf.read_text(encoding="utf-8"))
+        if os.name != "nt":
+            self.assertEqual(self.envf.stat().st_mode & 0o777, 0o600)
+
+    def test_setup_then_check_is_clean(self):
+        self._run(*self._common(), "--vault", str(self.vault))
+        self._run(*self._common(), "--key-stdin", stdin="podscribe-test-key-not-a-secret-0001")
+        data = self._json(self._run(*self._common(), "--check"))
+        self.assertFalse(data["needs_setup"], data)
+        self.assertEqual(data["missing"], [])
+
+    def test_local_config_overlays_base(self):
+        self.local.write_text(f'[vault]\npath = "{self.vault.as_posix()}"\n'
+                              f'\n[summary]\nblock_minutes = 7\n', encoding="utf-8")
+        cfg = C.load_config(self.base)                   # 显式指向模板
+        self.assertEqual(cfg["vault"]["path"], self.vault.as_posix())
+        self.assertEqual(cfg["summary"]["block_minutes"], 7)          # 覆盖生效
+        self.assertEqual(cfg["asr"]["engine"], "cloud")               # 模板其余部分还在
+        cfg2 = C.load_config(self.local)                 # 直接指向本地文件
+        self.assertEqual(cfg2["asr"]["engine"], "cloud")
+        self.assertEqual(cfg2["vault"]["path"], self.vault.as_posix())
+
+    def test_shipped_template_still_needs_setup(self):
+        """模板文件本身必须是「还没配」的状态（放到隔离目录，避开本地叠加）。"""
+        iso = Path(tempfile.mkdtemp()) / "config.toml"
+        iso.write_text((self.skill / "config.toml").read_text(encoding="utf-8"),
+                       encoding="utf-8")
+        cfg = C.load_config(iso)
+        self.assertEqual(cfg["vault"]["path"], "PLACEHOLDER_VAULT_PATH")
+        self.assertNotIn("FILL_ME", str(cfg["asr"]["cloud_model"]))       # ASR 预填
+        self.assertIn("siliconflow.cn", cfg["asr"]["cloud_base_url"])
 
 
 if __name__ == "__main__":

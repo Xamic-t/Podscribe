@@ -46,8 +46,9 @@ enabled = false
 
 ```bash
 cd ~/.agents/skills/podscribe
-cp .env.example .env && chmod 600 .env     # 填 SILICONFLOW_API_KEY
-$EDITOR config.toml                        # 只改 [vault].path
+python3 setup.py --check                   # 先看还缺什么（只读）
+python3 setup.py                           # 交互式问：库路径 + API key（不回显）
+# 写进 config.local.toml 与 .env，两者都不进版本库；config.toml 保持模板原样
 ```
 
 ## 调用

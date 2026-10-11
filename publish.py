@@ -212,7 +212,8 @@ def render(jd: Path, cfg: dict, suffix: str = "") -> tuple[str, str, str]:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--job-dir", required=True)
-    ap.add_argument("--config", required=True)
+    ap.add_argument("--config", default=None,
+                    help="配置文件；默认自动挑 config.local.toml / config.toml")
     ap.add_argument("--upsert", action="store_true", help="允许替换同名文件（默认拒绝）")
     ap.add_argument("--revision-suffix", default=None)
     ap.add_argument("--render-only", action="store_true", help="只渲染到缓存，不写库")

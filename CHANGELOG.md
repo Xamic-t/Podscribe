@@ -1,5 +1,39 @@
 # 修改日志
 
+## [2.6.0] · 2026-10-11 · 即装即用：`setup.py` 只问两样 + 跨平台
+
+装上之后不用再开编辑器改文件。`python3 setup.py` 只问两样：Obsidian 库路径、
+硅基流动 API Key（`getpass` 隐藏输入）。写进 `config.local.toml` 与 `.env`，
+两者都在 `.gitignore` 里，`config.toml` 保持模板原样。
+
+| 改动 | 说明 |
+|---|---|
+| 新增 `setup.py` | `--check` 只读体检（退出码恒为 0）/ 交互式 / `--vault` / `--key-stdin` / `--verify`（打 `/v1/models` 验 key，网络不通时只提示不判死） |
+| 配置叠加 | 同目录的 `config.local.toml` 自动叠加在 `config.toml` 之上；`--config` 由必填变可选（也支持 `$PODCAST_CONFIG`）。显式传参行为不变 |
+| 密钥不回显 | key 只落在 `.env`，stdout/日志只出现尾 4 位；POSIX 下 600，Windows 下尝试 `icacls /inheritance:r` |
+| 预填 ASR | `cloud_model` / `cloud_base_url` 预填硅基流动的 XingChenASR（**撤销 2.5.0「必须自己填」的决定**，改为开箱可用）。密钥仍然不进仓库，且只发往 `allowed_hosts` 白名单主机 |
+| 跨平台 | `os.devnull` 取代硬编码 `/dev/null`；`ffmpeg` / `ffprobe` / `python` 默认留空 → 走 PATH 与当前解释器；`_line()` / `log()` 在 Windows 代码页下自动降级为 `\uXXXX` 转义而不是抛 `UnicodeEncodeError` |
+| 模板安全 | `config.toml` 的 `[vault].path` 回到占位符；新增回归测试，禁止真实路径 / 用户名再次混进模板 |
+| `install.sh` | 拷贝清单补 `setup.py`；`--dir` 拒绝 `/`、`$HOME`、`/usr` 等危险目标与源目录自身 |
+| 文档 | 两份 README 的「填三处配置」改为「配一次：`setup.py`」；`--config` 从示例里去掉；adapters 同步 |
+
+本地迁移：作者的 `config.toml` 里原来的真实库路径已迁到 `config.local.toml`
+（同步脚本不拷这个文件），所以本地跑法不变，仓库里的模板从此是干净的。
+
+测试 38 → **46**：新增首次配置全流程、密钥不回显、`.env` 权限、
+`config.local.toml` 叠加语义、模板不含私人路径等用例。
+
+验证（在临时目录里模拟的「全新安装」）：
+
+```
+刚装好  --check → needs_setup=True, missing=['vault_path','api_key']   （ASR 已预填）
+非 tty  交互模式 → NOT_A_TTY（退出码 2），提示改用 --vault / --key-stdin
+--vault  → 写入 config.local.toml，config.toml 不动
+--key-stdin → 写入 .env（600），stdout 只有尾 4 位
+再 --check → needs_setup=False, missing=[]
+--verify  → 库可写；沙箱内无外网时返回「网络不通，暂不判断」而不是崩
+```
+
 ## [2.5.0] · 2026-10-11 · ASR 配置必须自己填（留空 + 硬校验）
 
 发布版 `config.toml` 以前带着默认的模型和接口地址，clone 下来就能跑，
@@ -95,7 +129,7 @@ job 目录里存着音频与逐字稿的绝对路径，改缓存根目录会让�
 
 | # | 问题 | 改动 | 验证 |
 |---|---|---|---|
-| N1 | `run.py audio --purge --job-dir /tmp/copy/xm-1` **静默只取最后一段**，会去清缓存里的同名 job（越界路径不报错） | 改用 `C.resolve_job_dir(cfg, ..., must_exist=False)`：越界抛 `JOB_NOT_IN_CACHE`（退出码 2） | 实测退出码 2，归档音频 59.4 MB 未被误删 |
+| N1 | `run.py audio --purge --job-dir /tmp/copy/xm-1` **静默只取最后一段**，会去清缓存里的同名 job（越界路径不报错） | 改用 `C.resolve_job_dir(cfg, ..., must_exist=False)`：越界抛 `JOB_NOT_IN_CACHE`（退出码 2） | 实测退出码 2，归档音频未被误删 |
 | N2 | job 目录不存在时没有明确错误码，后半程才撞 `KeyError` / `FileNotFoundError` | `resolve_job_dir()` 新增 `must_exist` 参数（默认 `True`），不存在抛 `JOB_NOT_FOUND`（退出码 2）。清理类命令显式传 `False` | 实测 `status --job-dir xm-404` → `JOB_NOT_FOUND`，退出码 2 |
 | N6 | `audio --list` 会显示 `pieces` 残留，但**没有任何命令能清掉它** | 新增 `purge_pieces()` 并入 `audio_purge`（同一套范围约束）；没匹配到任何文件时给出 warning，不静默报成功 | 实测残留 `pieces/` 被清且不影响别的一期；`--all` 清全部 |
 

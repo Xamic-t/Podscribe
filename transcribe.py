@@ -327,7 +327,8 @@ def write_vtt(segments: list[dict], path: Path) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--job-dir", required=True)
-    ap.add_argument("--config", required=True)
+    ap.add_argument("--config", default=None,
+                    help="配置文件；默认自动挑 config.local.toml / config.toml")
     ap.add_argument("--engine", default=None, choices=["cloud", "local"])
     ap.add_argument("--fast", action="store_true")
     ap.add_argument("--model", default=None)
@@ -343,8 +344,9 @@ def main() -> None:
         try:
             import faster_whisper  # noqa: F401
         except ImportError:
-            venv_py = Path(cfg["runtime"]["python"]).expanduser()   # 支持 ~ 开头
-            if venv_py.exists():
+            raw_venv = str(cfg["runtime"].get("python") or "").strip()  # 支持 ~ 开头
+            venv_py = Path(raw_venv).expanduser()
+            if raw_venv and venv_py.is_file():                      # 留空则用当前 python
                 os.execv(venv_py, [venv_py, str(Path(__file__).resolve()),
                                    "--job-dir", str(jd), "--config", args.config,
                                    "--engine", "local", "--no-reexec"]

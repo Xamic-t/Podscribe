@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import sys
@@ -70,7 +71,8 @@ def curl_cmd(url: str, out: Path, referer: str | None = None) -> list[str]:
 
 
 def expand_short(url: str) -> str:
-    cp = C.run(["curl", "-sSL", "-o", "/dev/null", "-w", "%{url_effective}",
+    # os.devnull：POSIX 是 /dev/null，Windows 是 nul（写 /dev/null 在 Windows 上会生成文件）
+    cp = C.run(["curl", "-sSL", "-o", os.devnull, "-w", "%{url_effective}",
                 "--max-time", "20", "-H", f"User-Agent: {C.UA}", "--", C.check_url(url)],
                timeout=30, check=False)
     final = cp.stdout.decode("utf-8", "replace").strip()
@@ -281,7 +283,8 @@ def _silent(p: Path) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--input", required=True)
-    ap.add_argument("--config", required=True)
+    ap.add_argument("--config", default=None,
+                    help="配置文件；默认自动挑 config.local.toml / config.toml")
     ap.add_argument("--rss-key", default=None, help="RSS 里要挑的单集 guid / 链接片段")
     ap.add_argument("--job-id", default=None)
     args = ap.parse_args()

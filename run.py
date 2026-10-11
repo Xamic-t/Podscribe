@@ -165,7 +165,8 @@ def main() -> None:
                     choices=["run", "status", "audio"])
     ap.add_argument("--input", default=None)
     ap.add_argument("--job-dir", default=None)
-    ap.add_argument("--config", required=True)
+    ap.add_argument("--config", default=None,
+                    help="配置文件；默认自动挑 config.local.toml / config.toml")
     ap.add_argument("--engine", default=None)
     ap.add_argument("--fast", action="store_true")
     ap.add_argument("--upsert", action="store_true", help="允许替换同名文件")
@@ -176,6 +177,8 @@ def main() -> None:
     ap.add_argument("--purge", action="store_true", help="audio：清理归档音频")
     args = ap.parse_args()
 
+    # 解析成绝对路径再往下传：子脚本拿到同一个文件，不受各自 cwd 影响
+    args.config = str(C.resolve_config_path(args.config))
     cfg = C.load_config(args.config)
 
     if args.action == "audio":

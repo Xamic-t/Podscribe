@@ -19,7 +19,8 @@ CUSTOM_DIR=""
 
 # 技能本体：只拷这些，不拷 .git / __pycache__ / .env / README / install.sh
 FILES=(SKILL.md VERSION CHANGELOG.md config.toml hotwords.txt .env.example
-       core.py download.py transcribe.py summarize.py publish.py run.py tests.py)
+       core.py download.py transcribe.py summarize.py publish.py run.py
+       setup.py tests.py)
 
 usage() {
   sed -n '2,12p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
@@ -41,6 +42,22 @@ case "$HARNESS" in
   *) echo "--harness 只能是 all / claude / codex / workbuddy" >&2; exit 2 ;;
 esac
 
+# --dir 是给用户自定义的，别让人一不小心把文件铺到系统目录或家目录根上
+if [[ -n "$CUSTOM_DIR" ]]; then
+  CANON="$(cd "$CUSTOM_DIR" 2>/dev/null && pwd || printf '%s' "$CUSTOM_DIR")"
+  case "$CANON" in
+    "/"|"$HOME"|"/Users"|"/usr"|"/usr"/*|"/etc"|"/var"|"/bin"|"/sbin"|"/opt"| \
+    "/System"|"/System"/*|"/Volumes"|"/Volumes"/*)
+      # 注意用 ${} 包起来：bash 3.2（macOS 自带）会把紧跟其后的中文当成变量名的一部分
+      echo "拒绝安装到 ${CANON}：--dir 请指向一个专门的子目录（脚本会往里铺文件）" >&2
+      exit 2 ;;
+  esac
+  if [[ "$CANON" == "$SRC" ]]; then
+    echo "拒绝安装到源目录自身：$CANON" >&2
+    exit 2
+  fi
+fi
+
 # ── 复制本体 ────────────────────────────────────────────────
 install_to() {
   local dest="$1" label="$2" marker="$3"
@@ -50,7 +67,7 @@ install_to() {
   for f in "${FILES[@]}"; do
     [[ -f "$SRC/$f" ]] || continue
     if [[ "$f" == "config.toml" && -f "$dest/$f" ]]; then
-      echo "    · 保留已有的 config.toml（不覆盖你的 vault 路径）"
+      echo "    · 保留已有的 config.toml（不覆盖你的设置）"
       continue
     fi
     cp "$SRC/$f" "$dest/$f"
@@ -129,11 +146,13 @@ cat <<NOTE
 装好了。接下来两件事（每个 harness 各做一次）：
 
   1. 填密钥：
-     cp <安装目录>/.env.example <安装目录>/.env && chmod 600 <安装目录>/.env
-     # 然后填 SILICONFLOW_API_KEY=sk-...
+     python3 <安装目录>/setup.py
+     # 交互式问两样：库路径 + API key（密钥不回显）。也可以先跑
+     # python3 <安装目录>/setup.py --check 看还缺什么。
 
-  2. 填 vault 路径：编辑 <安装目录>/config.toml 的 [vault].path
-     （仍为 PLACEHOLDER_VAULT_PATH 时，publish 会拒绝写入）
+  2. 上面两条信息会写进 <安装目录>/config.local.toml 与 .env：
+     它们都不会被提交（.gitignore 已排除），config.toml 保持模板原样。
+     手工填也行：把 [vault].path 改成库的绝对路径即可。
 
 各 harness 的权限、沙箱、调用方式见 adapters/claude-code.md 与 adapters/codex.md。
 NOTE

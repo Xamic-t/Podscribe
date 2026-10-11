@@ -11,8 +11,8 @@ allowed-tools: Bash, Read, Write, Edit, Glob, Grep
 
 ```bash
 SKILL=@SKILL_DIR@
-CONF=$SKILL/config.toml
 PY=python3               # 需要 3.11+（用到 tomllib）
+# --config 可以省略：自动按 config.local.toml → config.toml 找
 ```
 
 > 上面 `SKILL=` 那一行由 `install.sh` 自动替换成真实安装路径。
@@ -20,6 +20,32 @@ PY=python3               # 需要 3.11+（用到 tomllib）
 > （Claude Code 常见 `~/.claude/skills/podscribe`，
 > Codex 常见 `~/.agents/skills/podscribe`）。
 > 各 harness 的安装与权限注意见 `adapters/`。
+
+## 第一次运行前（只做一次）
+
+先体检，看缺什么：
+
+```bash
+$PY $SKILL/setup.py --check
+```
+
+返回 `"needs_setup": false` 就直接跑主流程；否则按 `missing` 逐项处理：
+
+| missing | 怎么办 |
+|---|---|
+| `vault_path` | **问用户要** Obsidian 库的绝对路径（不要自己去磁盘上翻库），然后 `$PY $SKILL/setup.py --vault "<路径>"` |
+| `api_key` | **不要让用户把 key 贴进对话**。请他自己在终端跑 `$PY $SKILL/setup.py`（交互式、输入不回显）；确实只能由你代收时，用 `setup.py --key-stdin` 从 stdin 传，并提醒他事后去服务商后台轮换 |
+| `asr_config` | 默认已预填硅基流动；只有它出现在 missing 里时才需要问用户用哪个模型／供应商 |
+
+写完再确认一次：
+
+```bash
+$PY $SKILL/setup.py --verify      # 库可写？key 有效？
+```
+
+配置写在 `config.local.toml`（本机私有、已 gitignore，叠加在 `config.toml` 之上），
+密钥写在 `.env`（POSIX 600 / Windows 用 icacls）。这两个文件都不进版本库，
+所以**不用再手工编辑 config.toml**。
 
 ## 文件
 
@@ -31,6 +57,7 @@ PY=python3               # 需要 3.11+（用到 tomllib）
 | `summarize.py` | plan / show / add / final / prompt（提示词在 `templates/summary_prompt.md`） |
 | `publish.py` | 渲染模板 + 写入 Obsidian |
 | `run.py` | 串起来，按缓存跳过已完成步骤 |
+| `setup.py` | 首次配置：问库路径 + 密钥，写 config.local.toml 与 .env |
 
 `--job-dir` 接受裸 job id（`xm-123`，`./xm-123` 等价）或缓存根之内的绝对路径；
 其它位置报错 `JOB_NOT_IN_CACHE`，目录不存在报错 `JOB_NOT_FOUND`，
@@ -39,7 +66,7 @@ PY=python3               # 需要 3.11+（用到 tomllib）
 ## 一句话跑完
 
 ```bash
-$PY $SKILL/run.py --input "<链接>" --config $CONF
+$PY $SKILL/run.py --input "<链接>"
 ```
 
 run.py 会依次检查 `metadata.json / transcript.json / summary.json / receipt.json`，
@@ -48,13 +75,16 @@ run.py 会依次检查 `metadata.json / transcript.json / summary.json / receipt
 ## 分步命令
 
 ```bash
-$PY $SKILL/download.py   --input "<链接>" --config $CONF
-SILICONFLOW_API_KEY=... $PY $SKILL/transcribe.py --job-dir <dir> --config $CONF
-$PY $SKILL/summarize.py plan  --job-dir <dir> --config $CONF      # 切块
-$PY $SKILL/summarize.py final --job-dir <dir> --config $CONF --json-file /tmp/summary.json
+$PY $SKILL/download.py   --input "<链接>"
+$PY $SKILL/transcribe.py --job-dir <dir>
+$PY $SKILL/summarize.py plan  --job-dir <dir>                    # 切块
+$PY $SKILL/summarize.py final --job-dir <dir> --json-file /tmp/summary.json
 # 小块摘要可用 --json '<...>'；终稿建议走 --json-file（上万字符不撞 ARG_MAX），- 表示 stdin
-$PY $SKILL/publish.py    --job-dir <dir> --config $CONF           # 写库
+$PY $SKILL/publish.py    --job-dir <dir>                         # 写库
 ```
+
+以上命令都省略了 `--config`（自动挑 `config.local.toml` → `config.toml`）；
+要指定别的配置文件时再加 `--config <路径>` 或设 `$PODCAST_CONFIG`。
 
 ## 转写引擎
 
@@ -63,18 +93,17 @@ $PY $SKILL/publish.py    --job-dir <dir> --config $CONF           # 写库
 相邻块重叠 30 秒，用时间重叠把各块局部标签对齐成全局「说话人 A / B」。
 每条分块的原始返回缓存在 `<job>/raw/`，重跑不重复计费。
 
-**`asr.cloud_model` 与 `asr.cloud_base_url` 必须由使用者填好才能转写**，仓库里是占位符；
-没填就停（`ASR_NOT_CONFIGURED`，退出码 3），不要替他填一个默认值——用哪个模型、花不花钱是他的决定。
-想跳过这一步就加 `--engine local`。
+`asr.cloud_model` 与 `asr.cloud_base_url` 默认已预填硅基流动的 XingChenASR；
+换成别的供应商时记得同步改 `asr.allowed_hosts`，否则请求会被拒（退出码 13）。
+两项若被改成 `FILL_ME_*` 之类占位符，转写会直接停（`ASR_NOT_CONFIGURED`，退出码 3）。
+完全不想用云端就加 `--engine local`，走本地 faster-whisper。
 
 **密钥只放在 env 文件里，绝不写进代码、config.toml 或任何 md 文件。**
 
-标准 `.env` + dotenv 约定，文件在 skill 根目录（已 600）：
+标准 `.env` 约定，文件在 skill 根目录。**不要手工 `cp` + 编辑**，交给 setup：
 
 ```bash
-cp $SKILL/.env.example $SKILL/.env && chmod 600 $SKILL/.env
-# 然后填：
-SILICONFLOW_API_KEY=sk-xxxxxxxx
+$PY $SKILL/setup.py            # 交互式，问库路径 + 密钥，输入不回显
 ```
 
 - **加载**：`core.load_env()` 用内置解析，**不依赖任何第三方包**

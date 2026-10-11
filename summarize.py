@@ -162,7 +162,8 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("action", choices=["plan", "show", "add", "final", "prompt"])
     ap.add_argument("--job-dir", required=True)
-    ap.add_argument("--config", required=True)
+    ap.add_argument("--config", default=None,
+                    help="配置文件；默认自动挑 config.local.toml / config.toml")
     ap.add_argument("--block", type=int, default=None)
     ap.add_argument("--json", dest="json_str", default=None, help="小块摘要可直接传字符串")
     # P12：终稿 JSON 可能上万字符，走文件更安全（ARG_MAX / 引号转义）

@@ -25,6 +25,9 @@ UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36")
 CONTROL_RE = re.compile(r"[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]")
 
+CONFIG_NAME = "config.toml"                # 仓库里的模板（跟着 git 走）
+LOCAL_CONFIG_NAME = "config.local.toml"    # 本机私有覆盖（已在 .gitignore）
+
 EXIT_OK, EXIT_BAD_INPUT, EXIT_BAD_CONFIG, EXIT_NETWORK = 0, 2, 3, 4
 EXIT_PAID, EXIT_MEDIA, EXIT_ASR = 5, 6, 7
 EXIT_API, EXIT_VALIDATION, EXIT_TARGET_EXISTS, EXIT_FS, EXIT_PRIVACY = 9, 10, 11, 12, 13
@@ -45,7 +48,14 @@ class Fail(Exception):
 
 
 def log(msg: str) -> None:
-    sys.stderr.write(f"[podcast] {msg}\n")
+    # Windows 上 stderr 被重定向到管道时用的是本地代码页（如 cp936），
+    # 遇到 emoji 之类字符会抛 UnicodeEncodeError，这里退化成替换字符而不是崩掉。
+    try:
+        sys.stderr.write(f"[podcast] {msg}\n")
+    except UnicodeEncodeError:
+        enc = getattr(sys.stderr, "encoding", None) or "utf-8"
+        safe = str(msg).encode(enc, "replace").decode(enc, "replace")
+        sys.stderr.write(f"[podcast] {safe}\n")
     sys.stderr.flush()
 
 
@@ -63,8 +73,21 @@ def fail(stage: str, err: Fail, job_id: str | None = None) -> None:
            "job_id": job_id, "error": err.payload()})
 
 
+def _json_line(payload: dict, ascii_only: bool = False) -> str:
+    return json.dumps(payload, ensure_ascii=ascii_only, separators=(",", ":"),
+                      default=str) + "\n"
+
+
 def _line(payload: dict) -> None:
-    sys.stdout.write(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n")
+    """stdout 永远输出一行 JSON。
+
+    正常情况下保留中文原文（ensure_ascii=False）；Windows 上 stdout 被重定向时
+    可能受代码页限制，这时退回 \\uXXXX 转义——JSON 语义完全一致，调用方照常解析。
+    """
+    try:
+        sys.stdout.write(_json_line(payload))
+    except UnicodeEncodeError:
+        sys.stdout.write(_json_line(payload, ascii_only=True))
     sys.stdout.flush()
 
 
@@ -99,8 +122,8 @@ DEFAULTS = {
     "vault": {"path": "PLACEHOLDER_VAULT_PATH", "output_subdir": "播客",
               "transcript_subdir": "逐字稿", "publish_strategy": "create_only"},
     "runtime": {"cache_root": "~/.cache/podcast-to-obsidian",
-                "python": "~/.cache/video-to-subtitle-summary/faster-whisper-venv/bin/python",
-                "ffmpeg": "/opt/homebrew/bin/ffmpeg", "ffprobe": "/opt/homebrew/bin/ffprobe"},
+                # 留空 = 用当前 python3 / PATH 里的同名命令，跨平台安全
+                "python": "", "ffmpeg": "", "ffprobe": ""},
     "asr": {"engine": "cloud", "language": "zh",
             # 这两项故意留占位符：ASR 用哪个模型、打哪个接口，必须由使用者自己决定并填进来
             "cloud_model": "FILL_ME_ASR_MODEL",
@@ -122,14 +145,57 @@ DEFAULTS = {
 }
 
 
-def load_config(path) -> dict:
-    p = Path(path).expanduser()
+def resolve_config_path(raw=None) -> Path:
+    """决定用哪份配置，返回绝对路径（文件是否存在交给 load_config 判）。
+
+    优先级：显式 --config > $PODCAST_CONFIG > <skill>/config.local.toml > <skill>/config.toml
+    setup.py 把隐私值写进 config.local.toml，于是它自动生效，用户不用记参数。
+    """
+    if raw:
+        p = Path(str(raw)).expanduser()
+        return p if p.is_absolute() else (Path.cwd() / p)
+    env_raw = os.environ.get("PODCAST_CONFIG")
+    if env_raw:
+        p = Path(env_raw).expanduser()
+        return p if p.is_absolute() else (Path.cwd() / p)
+    local = SKILL_ROOT / LOCAL_CONFIG_NAME
+    return local if local.is_file() else (SKILL_ROOT / CONFIG_NAME)
+
+
+def _read_toml(p: Path) -> dict:
     if not p.is_file():
         raise Fail("config", "CONFIG_MISSING", f"配置文件不存在：{p}", EXIT_BAD_CONFIG)
     try:
-        cfg = tomllib.loads(p.read_text(encoding="utf-8"))
+        return tomllib.loads(p.read_text(encoding="utf-8"))
     except tomllib.TOMLDecodeError as e:
-        raise Fail("config", "CONFIG_INVALID", f"TOML 解析失败：{e}", EXIT_BAD_CONFIG)
+        raise Fail("config", "CONFIG_INVALID", f"TOML 解析失败：{p}：{e}", EXIT_BAD_CONFIG)
+    except OSError as e:
+        raise Fail("config", "CONFIG_UNREADABLE", f"读不到配置文件：{p}（{e}）", EXIT_BAD_CONFIG)
+
+
+def _deep_merge(base: dict, overlay: dict) -> dict:
+    out = dict(base)
+    for k, v in overlay.items():
+        if isinstance(v, dict) and isinstance(out.get(k), dict):
+            out[k] = _deep_merge(out[k], v)
+        else:
+            out[k] = v
+    return out
+
+
+def load_config(path=None) -> dict:
+    """读配置。path 为空时自动挑 config.local.toml / config.toml。
+
+    同目录下的 config.local.toml 永远作为覆盖层：显式 --config、自动探测、
+    或者直接指向 config.local.toml，都是「先读 config.toml，再叠加它」。
+    于是「模板跟着 git 走 + 隐私值放本地」可以同时成立。
+    """
+    p = resolve_config_path(path)
+    local = p.parent / LOCAL_CONFIG_NAME
+    base = (p.parent / CONFIG_NAME) if p.name == LOCAL_CONFIG_NAME else p
+    cfg = _read_toml(base) if base.is_file() else {}
+    if local.is_file() and local != base:
+        cfg = _deep_merge(cfg, _read_toml(local))
     # P21：DEFAULTS 只有两层，去掉不可达的嵌套分支
     for section, values in DEFAULTS.items():
         node = cfg.setdefault(section, {})
@@ -373,6 +439,12 @@ def env_file_path() -> Path | None:
     return None
 
 
+def default_env_file() -> Path:
+    """写入密钥时的目标文件（不要求已存在）。"""
+    override = os.environ.get("PODCAST_ENV_FILE")
+    return Path(override).expanduser() if override else (SKILL_ROOT / ".env")
+
+
 def _parse_dotenv(path: Path) -> dict:
     """P8：只保留一份解析实现（不依赖 python-dotenv），行为显式可控。
 
@@ -412,7 +484,12 @@ def env_permission_warning() -> str | None:
     path = env_file_path()
     if not path:
         return None
-    mode = path.stat().st_mode & 0o777
+    if os.name == "nt":          # Windows 的 chmod 只影响只读位，600 语义不成立
+        return None              # 由 setup.py 在配置时给一次 icacls 提示
+    try:
+        mode = path.stat().st_mode & 0o777
+    except OSError:
+        return None
     if mode & 0o077:
         return f"{path} 权限是 {oct(mode)}，建议改为 600（chmod 600）"
     return None

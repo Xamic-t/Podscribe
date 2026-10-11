@@ -1,9 +1,13 @@
 schema_version = 2
 
-# ─────────────────────────────────────────────
-# 唯一需要你填的东西：Obsidian 库绝对路径
-# ─────────────────────────────────────────────
+# ───────────────────────────────────────────────────────────────────────
+# 这是随仓库分发的模板。跑一次 `python3 setup.py` 会把隐私值
+# （库路径、密钥）写进同目录的 config.local.toml——它已在 .gitignore 里，
+# 并且会叠加在本文件之上。所以：模板可以放心提交，个人值放本地。
+# ───────────────────────────────────────────────────────────────────────
+
 [vault]
+# 留占位符时 publish 会拒绝写入（退出码 3）
 path = "PLACEHOLDER_VAULT_PATH"
 output_subdir = "播客"
 transcript_subdir = "逐字稿"
@@ -12,24 +16,27 @@ transcript_subdir = "逐字稿"
 publish_strategy = "create_only"
 
 [runtime]
-# 缓存根目录。名字沿用更名前的项目名是刻意的：job 目录里存着音频与逐字稿的
-# 绝对路径，换了会让已转写的历史 job 失效。要改就自己把目录一起搬过去。
+# 缓存根目录（job 目录、转写分片、音频归档都在这里）
 cache_root = "~/.cache/podcast-to-obsidian"
-# python 只在 --engine local 时用（装了 faster-whisper 的 venv）；支持 ~ 开头
-python = "~/.cache/video-to-subtitle-summary/faster-whisper-venv/bin/python"
-# ffmpeg / ffprobe 填绝对路径；找不到时会自动回落到 PATH 里的同名命令
-ffmpeg = "/opt/homebrew/bin/ffmpeg"
-ffprobe = "/opt/homebrew/bin/ffprobe"
+# 只在 --engine local 时需要：装了 faster-whisper 的解释器。
+# 留空 = 用当前 python3（若它装了 faster-whisper 就能直接跑）
+python = ""
+# ffmpeg / ffprobe：留空 = 直接用 PATH 里的同名命令（跨平台推荐）；
+# 装了但不在 PATH 里，才需要填绝对路径。
+ffmpeg = ""
+ffprobe = ""
 
 [asr]
 # cloud = 云端（默认：说话人分离 + 句级时间戳）  local = 本地 faster-whisper
 engine = "cloud"
 language = "zh"
-# ★ 必填：ASR 用哪个模型、打哪个接口。仓库里这两项是占位符，不填会在转写前报错（退出码 3）
-cloud_model = "FILL_ME_ASR_MODEL"
-cloud_base_url = "FILL_ME_BASE_URL"
-# 密钥只发往这些主机。换服务商时把新域名加进来，否则请求会被直接拒绝（防止配置被改指向）
+# 默认走硅基流动，开箱可用；换供应商时改 cloud_base_url，
+# 并把新域名加进 allowed_hosts，否则请求会被直接拒绝（退出码 13）
+cloud_model = "XingChenAGI/XingChenASR-Diarize-V3.0"
+cloud_base_url = "https://api.siliconflow.cn/v1"
+# 密钥只发往这些主机（代码级硬校验，防配置被改指向）
 allowed_hosts = ["api.siliconflow.cn"]
+# 密钥从这个环境变量读；值放 .env 或进程环境，绝不写进本文件
 api_key_env = "SILICONFLOW_API_KEY"
 chunk_minutes = 20          # 大块上传，避免短上下文导致专有名词出错
 overlap_seconds = 30        # 重叠用于跨块对齐说话人
@@ -37,11 +44,12 @@ concurrency = 4
 timeout_seconds = 600
 send_hotword = true         # 云端提交热词；接口不支持时会自动退回不带热词
 initial_prompt_prefix = "以下是中文播客，可能涉及以下专有名词："
+# 本地引擎的模型（--engine local 时用）
 local_model = "mobiuslabsgmbh/faster-whisper-large-v3-turbo"
 local_fast_model = "small"
 
 [summary]
-# 只有 session 一种模式：由会话模型（我）读稿总结，不调用任何外部对话模型。
+# 只有 session 一种模式：由会话模型（Agent）读稿总结，不调用任何外部对话模型。
 # 长节目可让子 Agent 逐块压缩，那也算在会话里，不会额外扣 API 的钱。
 mode = "session"
 block_minutes = 15          # 读稿分块时长

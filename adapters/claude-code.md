@@ -24,8 +24,9 @@ cp -R /path/to/podscribe .claude/skills/podscribe
 
 ```bash
 cd ~/.claude/skills/podscribe
-cp .env.example .env && chmod 600 .env     # 填 SILICONFLOW_API_KEY
-$EDITOR config.toml                        # 只改 [vault].path
+python3 setup.py                           # 问两样：库路径 + API key（密钥不回显）
+# 非交互：python3 setup.py --vault "<路径>" && python3 setup.py --key-stdin
+# 它会写 config.local.toml 与 .env，config.toml 保持模板原样
 ```
 
 ## 调用
