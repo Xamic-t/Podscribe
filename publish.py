@@ -91,8 +91,9 @@ def render(jd: Path, cfg: dict, suffix: str = "") -> tuple[str, str, str]:
                   else "本地音频文件")]
     info_table = "\n".join(f"> | {k} | {md_table_value(v)} |" for k, v in info_rows)
 
+    # is_core 由 summarize.py 从【核心】前缀推出；这里给核心要点加个★，方便回看时先扫核心
     kp = "\n\n".join(
-        f"### {i}. {p['heading']}\n\n{p['detail']}"
+        f"### {i}. {'★ ' if p.get('is_core') else ''}{p['heading']}\n\n{p['detail']}"
         + (f"\n\n- 证据位置：{'、'.join('`' + C.fmt_duration(t) + '`' for t in p['evidence_times'][:4])}"
            if p.get("evidence_times") else "")
         for i, p in enumerate(summary.get("key_points") or [], 1)) or "_（没有结构化要点）_"

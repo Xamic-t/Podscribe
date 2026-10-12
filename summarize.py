@@ -16,6 +16,9 @@
 
 说明：这里没有任何 LLM 调用。读稿与综合都由会话模型完成；
 节目很长时可以让子 Agent 逐块压缩，再把摘要用 add 回写。
+
+子 Agent 只处理局部：给它一块 15 分钟的稿，它只产出该块的章节、局部要点和金句，
+不该让它猜全篇的核心观点（它看不到全局）。全篇的 tldr 与【核心】要点在 final 阶段统揽。
 """
 from __future__ import annotations
 
@@ -91,6 +94,24 @@ def verify_quote(text: str, hay: str) -> bool:
     return "".join(n) in "".join(h)
 
 
+CORE_PREFIX, DETAIL_PREFIX = "【核心】", "【细节】"
+
+
+def split_heading(heading) -> tuple[bool, str]:
+    """拆出要点标题里的分层前缀。
+
+    提示词要求核心要点以【核心】开头、其余以【细节】开头。前缀只是给代码看的标记，
+    不进最终笔记：这里返回 (是否核心, 剥掉前缀后的标题)。
+    """
+    text = str(heading or "").strip()
+    is_core = text.startswith(CORE_PREFIX)
+    for prefix in (CORE_PREFIX, DETAIL_PREFIX):
+        if text.startswith(prefix):
+            text = text[len(prefix):].strip()
+            break
+    return is_core, text or "要点"
+
+
 def store_final(jd: Path, cfg: dict, raw: dict) -> tuple[dict, list[str]]:
     transcript = C.read_json(jd / "transcript.json")
     segments = transcript.get("segments", [])
@@ -128,15 +149,23 @@ def store_final(jd: Path, cfg: dict, raw: dict) -> tuple[dict, list[str]]:
         chapters.append({"start": start, "title": ch.get("title") or "章节",
                          "summary": ch.get("summary") or ""})
 
+    key_points = []
+    for p in points:
+        is_core, heading = split_heading(p.get("heading"))
+        key_points.append({
+            "is_core": is_core,                       # 前端/渲染据此区分核心与细节
+            "heading": heading,
+            "detail": p.get("detail") or "",
+            "evidence_times": sorted({round(float(t), 2) for t in
+                                      (p.get("evidence_times") or [])
+                                      if isinstance(t, (int, float))}),
+        })
+
     summary = {
         "schema_version": C.SCHEMA_VERSION,
         "title": raw.get("title"),
         "tldr": raw["tldr"],
-        "key_points": [{"heading": p.get("heading") or "要点", "detail": p.get("detail") or "",
-                        "evidence_times": sorted({round(float(t), 2) for t in
-                                                  (p.get("evidence_times") or [])
-                                                  if isinstance(t, (int, float))})}
-                       for p in points],
+        "key_points": key_points,
         "quotes": quotes,
         "paraphrases": paraphrases,
         "actions": [a for a in (raw.get("actions") or []) if isinstance(a, dict) and a.get("item")],
@@ -144,14 +173,20 @@ def store_final(jd: Path, cfg: dict, raw: dict) -> tuple[dict, list[str]]:
         "speaker_roles": raw.get("speaker_roles") or [],
         "uncertainties": raw.get("uncertainties") or [],
     }
-    body = summary["tldr"] + "".join(p["heading"] + p["detail"] for p in summary["key_points"])
+    # 章节摘要也算正文：否则模型把细节全塞进 chapters.summary 时，字数校验形同虚设，
+    # JSON 体积会悄悄膨胀而没有任何 warning。
+    body = (summary["tldr"]
+            + "".join(p["heading"] + p["detail"] for p in summary["key_points"])
+            + "".join(ch["summary"] for ch in summary["chapters"]))
     n = len([c for c in body if not c.isspace()])
-    lo = int(cfg["summary"].get("target_min_chars", 800))
-    hi = int(cfg["summary"].get("target_max_chars", 1500))
+    lo = int(cfg["summary"].get("target_min_chars", 1200))
+    hi = int(cfg["summary"].get("target_max_chars", 2500))
     if n < lo:
         warnings.append(f"正文约 {n} 字，低于目标 {lo}。")
     elif n > hi * 1.6:
         warnings.append(f"正文约 {n} 字，超过目标 {hi} 较多。")
+    if not any(p["is_core"] for p in key_points):
+        warnings.append("要点里没有一条以【核心】开头，核心/细节分层可能没生效。")
     C.write_json(jd / "summary.json", summary)
     C.update_job(jd / "job.json", {"stages": {"summarize": {"status": "done",
                                                             "at": C.iso_now()}}})
@@ -204,7 +239,11 @@ def main() -> None:
                artifacts={"index": str(blocks_dir(jd) / "index.json")},
                next_action={"kind": "summarize_blocks",
                             "hint": "依次读 blocks/block-*.md（长节目可派子 Agent 逐块压缩），"
-                                    "用 add 回写摘要，最后 final。"},
+                                    "用 add 回写摘要，最后 final。"
+                                    "子 Agent 只做局部抽取：该块的 chapters、局部要点（标【细节】）、"
+                                    "quotes，别让它提炼全篇核心观点或 TL;DR——它只看得到 15 分钟；"
+                                    "全篇的 tldr 与【核心】要点留到 final 统揽时再写。"
+                                    "详见提示词里的「分块读稿阶段」一节。"},
                **plan)
     elif args.action == "show":
         index = C.read_json(blocks_dir(jd) / "index.json")["blocks"]

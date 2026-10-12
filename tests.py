@@ -248,6 +248,62 @@ class Round2Fixes(unittest.TestCase):
         self.assertEqual(ctx.exception.exit_code, C.EXIT_BAD_CONFIG)
 
 
+class SummaryFinalFixes(unittest.TestCase):
+    """第三轮建议：章节计入字数、核心/细节分层、字数上限放宽。"""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.cfg = C.load_config(Path(__file__).resolve().parent / "config.toml")
+        self.cfg["runtime"]["cache_root"] = str(self.tmp)
+        self.jd = C.job_dir(self.cfg, "xm-sum")
+        self.jd.mkdir(parents=True)
+        C.write_json(self.jd / "transcript.json",
+                     {"segments": [{"start": 0.0, "end": 5.0, "text": "你好",
+                                    "speaker": "说话人 A"}],
+                      "duration": 600.0})
+        self.cfg["summary"]["target_min_chars"] = 10      # 别让下限干扰这几条断言
+        self.cfg["summary"]["target_max_chars"] = 200
+
+    def _final(self, raw):
+        return S.store_final(self.jd, self.cfg, raw)[1]   # warnings
+
+    def _raw(self, chapters_summary="短"):
+        return {
+            "tldr": "一句话总摘要。",
+            "key_points": [{"heading": "【核心】核心观点", "detail": "展开。",
+                            "evidence_times": [1.0]},
+                           {"heading": "【细节】分支案例", "detail": "细节。",
+                            "evidence_times": [2.0]}],
+            "chapters": [{"start": 0.0, "title": "开场",
+                          "summary": chapters_summary}],
+        }
+
+    def test_chapters_counted_in_body(self):          # 字数统计的盲区
+        short = self._final(self._raw("短"))
+        self.assertFalse(any("超过目标" in w for w in short), short)
+        long = self._final(self._raw("细" * 600))     # 只把细节塞进章节
+        self.assertTrue(any("超过目标" in w for w in long), long)
+
+    def test_core_and_detail_prefixes(self):
+        summary, _ = S.store_final(self.jd, self.cfg, self._raw())
+        core, detail = summary["key_points"]
+        self.assertTrue(core["is_core"])
+        self.assertFalse(detail["is_core"])
+        self.assertEqual(core["heading"], "核心观点")     # 前缀已剥掉
+        self.assertEqual(detail["heading"], "分支案例")
+
+    def test_plain_heading_is_not_core(self):
+        S.split_heading("普通标题") == (False, "普通标题")
+        self.assertEqual(S.split_heading("【核心】 A"), (True, "A"))
+        self.assertEqual(S.split_heading("【细节】B"), (False, "B"))
+
+    def test_warns_when_no_core_point(self):
+        raw = self._raw()
+        for p in raw["key_points"]:
+            p["heading"] = p["heading"].replace("【核心】", "【细节】")
+        self.assertTrue(any("【核心】" in w for w in self._final(raw)))
+
+
 class AsrConfigGate(unittest.TestCase):
     """ASR 模型与接口地址必须是使用者自己填的，占位符一律拦下。"""
 

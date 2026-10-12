@@ -133,7 +133,9 @@ New files in the vault:
 播客/逐字稿/2026-10-03 EP752 Title [job-id].vtt             # WebVTT subtitles (optional)
 ```
 
-The main note runs top to bottom: YAML frontmatter (`source`, `duration`, `speakers`, `asr_model`, `word_count`, …) → info table → TL;DR → layered key points (with evidence positions) → quotes → action-item table → chapter timeline → show notes → link to the transcript.
+The main note runs top to bottom: YAML frontmatter (`source`, `duration`, `speakers`, `asr_model`, `word_count`, …) → info table → TL;DR → layered key points (with evidence positions; core points are marked ★) → quotes → action-item table → chapter timeline → show notes → link to the transcript.
+
+Key points come in two tiers. The prompt asks for core points to start their heading with 【核心】; `summarize.py` strips the prefix, records an `is_core` flag in `summary.json`, and the renderer adds ★ to core points. Editing the prompt changes how the tiers are decided.
 
 The note states that speaker labels come from ASR clustering and that cross-chunk alignment can be wrong, rather than presenting them as facts.
 

@@ -2,8 +2,9 @@
 
 简体中文（默认） · [English](README.en.md)
 
-[![GitHub stars](https://img.shields.io/github/stars/Xamic-t/Podscribe?style=social)](https://github.com/Xamic-t/Podscribe)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![GitHub stars](https://img.shields.io/github/stars/Xamic-t/Podscribe?style=social)
+
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 给一个播客单集链接，拿回一篇能追溯的 Obsidian 笔记：TL;DR、分层要点（每条挂着 `01:23:45` 这样的证据位置）、逐字校验过的金句、行动项、章节时间表，外加整期逐字稿和一份 WebVTT 字幕。
 
@@ -11,12 +12,12 @@
 
 **链接 → 下载 → 转写 → 总结 → 落盘成笔记**，四步，每步都落盘，重跑会跳过已完成的步骤。
 
-| 步骤 | 在哪跑 | 做什么 | 花钱吗 |
-|---|---|---|---|
-| ① 下载<br>`download.py` | 本地 | 识别来源：喜马拉雅 / 小宇宙 / RSS / 音频直链 / 本地音频；取音频与标题、主播、时长、节目简介。**付费单集在这一步就停**（退出码 5），不绕鉴权 | 免费 |
-| ② 转写<br>`transcribe.py` | 云端<br>（硅基流动） | **唯一需要联网的一步。** 20 分钟切一块 + 块间重叠 30 秒，一次拿到**句级时间戳 + 说话人 A/B**；默认模型 `XingChenAGI/XingChenASR-Diarize-V3.0`。加 `--engine local` 可换成完全本地的 faster-whisper | 目前免费 |
-| ③ 总结<br>你的 Agent | 你的会话 | **不调用任何外部对话模型。** 由正在跟你对话的 Agent 读逐字稿、分块写要点、汇总并逐字校验金句；超过 2 小时的节目可以派子 Agent 分块压缩 | 只吃会话额度 |
-| ④ 落盘<br>`publish.py` | 本地 | 渲染模板 → 原子写入 vault。默认 `create_only`：目标已存在就停（退出码 11），**绝不覆盖、也不读你已有的笔记** | 免费 |
+| 步骤                        | 在哪跑            | 做什么                                                                                                                                                | 花钱吗    |
+| ------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| ① 下载<br />`download.py`   | 本地             | 识别来源：喜马拉雅 / 小宇宙 / RSS / 音频直链 / 本地音频；取音频与标题、主播、时长、节目简介。**付费单集在这一步就停**（退出码 5），不绕鉴权                                                                   | 免费     |
+| ② 转写<br />`transcribe.py` | 云端<br />（硅基流动） | **唯一需要联网的一步。** 20 分钟切一块 + 块间重叠 30 秒，一次拿到**句级时间戳 + 说话人 A/B**；默认模型 `XingChenAGI/XingChenASR-Diarize-V3.0`。加 `--engine local` 可换成完全本地的 faster-whisper | 目前免费   |
+| ③ 总结<br />你的 Agent        | 你的会话           | **不调用任何外部对话模型。** 由正在跟你对话的 Agent 读逐字稿、分块写要点、汇总并逐字校验金句；超过 2 小时的节目可以派子 Agent 分块压缩                                                                     | 只吃会话额度 |
+| ④ 落盘<br />`publish.py`    | 本地             | 渲染模板 → 原子写入 vault。默认 `create_only`：目标已存在就停（退出码 11），**绝不覆盖、也不读你已有的笔记**                                                                              | 免费     |
 
 **钱和隐私，先说清楚：**
 
@@ -29,12 +30,12 @@
 
 ### 需要什么
 
-| 需要 | 说明 |
-|---|---|
-| Python 3.11+ | 只用标准库（`tomllib`），没有第三方依赖 |
-| `ffmpeg` / `ffprobe` | 切长音频、探时长 |
-| `curl` | 下载音频（macOS 与 Windows 10+ 自带） |
-| 硅基流动 API Key | 免费模型也要 key；不想用云端就加 `--engine local`，可以不办 |
+| 需要                   | 说明                                       |
+| -------------------- | ---------------------------------------- |
+| Python 3.11+         | 只用标准库（`tomllib`），没有第三方依赖                 |
+| `ffmpeg` / `ffprobe` | 切长音频、探时长                                 |
+| `curl`               | 下载音频（macOS 与 Windows 10+ 自带）             |
+| 硅基流动 API Key         | 免费模型也要 key；不想用云端就加 `--engine local`，可以不办 |
 
 ### 第 1 步：装
 
@@ -83,11 +84,11 @@ python3 run.py --input "<播客单集链接>"
 
 ## 费用与模型
 
-| 环节 | 用什么 | 费用 |
-|---|---|---|
+| 环节     | 用什么                                                                                                   | 费用                                                         |
+| ------ | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
 | 转写（默认） | 硅基流动 `XingChenAGI/XingChenASR-Diarize-V3.0`，走兼容 OpenAI 的 `/v1/audio/transcriptions`，一次返回句级时间戳 + 说话人分离 | 按硅基流动定价页，XingChenASR 系列（含这个模型）目前标为**免费**；免费名单会调整，用之前看一眼定价页 |
-| 转写（备选） | 本地 faster-whisper（`--engine local`） | 不花钱，但慢（3 小时节目在本机 CPU 上以小时计），且没有说话人分离 |
-| 总结 | 会话里的 Agent，或它派的子代理 | 不调用外部对话模型，只消耗你当前的会话额度 |
+| 转写（备选） | 本地 faster-whisper（`--engine local`）                                                                   | 不花钱，但慢（3 小时节目在本机 CPU 上以小时计），且没有说话人分离                       |
+| 总结     | 会话里的 Agent，或它派的子代理                                                                                    | 不调用外部对话模型，只消耗你当前的会话额度                                      |
 
 换别的 ASR 供应商：改 `config.toml` 的 `asr.cloud_base_url` 与 `asr.cloud_model`，把新域名加进 `asr.allowed_hosts`（否则会被白名单拒掉，退出码 13）。密钥只发往 `allowed_hosts` 里的主机，这是代码里的硬校验。
 
@@ -97,16 +98,16 @@ python3 run.py --input "<播客单集链接>"
 
 ## 它解决什么问题
 
-| 听播客时会遇到 | 这里的做法 |
-|---|---|
-| 听完就忘，想引用一句得回去拖进度条 | 逐字稿带句级时间戳，笔记里的要点和金句都挂着 `01:23:45` |
-| 分不清哪句是谁说的 | 云端 ASR 带说话人分离（说话人 A / B），长音频分块后做全局标签对齐 |
-| 3 小时节目本地转写要跑一小时以上 | 默认走云端，1.5 小时的节目实测约 80 秒出稿 |
-| 总结里的「金句」经常是模型编的 | 每条金句回原文 ±30 秒做逐字匹配，命中才算原话，命不中的降级标注成「模型概括」 |
-| 怕工具覆盖或弄脏已有的库 | 默认 `create_only`：目标存在就停（退出码 11），不覆盖，也不读已有笔记 |
-| 重跑一次就重新扣一次钱 | 每步都有缓存（分片原始返回、逐字稿、总结），中断后重跑会跳过已完成的步骤 |
+| 听播客时会遇到            | 这里的做法                                                        |
+| ------------------ | ------------------------------------------------------------ |
+| 听完就忘，想引用一句得回去拖进度条  | 逐字稿带句级时间戳，笔记里的要点和金句都挂着 `01:23:45`                            |
+| 分不清哪句是谁说的          | 云端 ASR 带说话人分离（说话人 A / B），长音频分块后做全局标签对齐                       |
+| 3 小时节目本地转写要跑一小时以上  | 默认走云端，1.5 小时的节目实测约 80 秒出稿                                    |
+| 总结里的「金句」经常是模型编的    | 每条金句回原文 ±30 秒做逐字匹配，命中才算原话，命不中的降级标注成「模型概括」                    |
+| 怕工具覆盖或弄脏已有的库       | 默认 `create_only`：目标存在就停（退出码 11），不覆盖，也不读已有笔记                  |
+| 重跑一次就重新扣一次钱        | 每步都有缓存（分片原始返回、逐字稿、总结），中断后重跑会跳过已完成的步骤                         |
 | 专有名词被写错（音译名、英文品牌名） | `hotwords.txt` 一行一个词，云端作为 `hotword` 提交，本地拼进 `initial_prompt` |
-| 总结风格不合口味 | 提示词在 `templates/summary_prompt.md`，自己改，下次生效 |
+| 总结风格不合口味           | 提示词在 `templates/summary_prompt.md`，自己改，下次生效                  |
 
 ---
 
@@ -133,7 +134,10 @@ vault 里多出这些文件：
 播客/逐字稿/2026-10-03 EP752 标题 [job-id].vtt              # WebVTT 字幕（可关）
 ```
 
-主笔记从上到下是：YAML frontmatter（`source / duration / speakers / asr_model / word_count` 等）→ 信息表 → TL;DR → 分层要点（带证据位置）→ 金句 → 行动项表 → 章节时间表 → 节目简介 → 逐字稿链接。
+主笔记从上到下是：YAML frontmatter（`source / duration / speakers / asr_model / word_count` 等）→ 信息表 → TL;DR → 分层要点（带证据位置，核心要点标 ★）→ 金句 → 行动项表 → 章节时间表 → 节目简介 → 逐字稿链接。
+
+要点分核心与细节两层：提示词里要求核心观点的标题以【核心】开头，`summarize.py` 会剥掉前缀、
+在 `summary.json` 里记一个 `is_core`，渲染时给核心要点加 ★。改提示词就能改分层规则。
 
 笔记里会写明说话人标签来自 ASR 聚类、跨块对齐可能有误差，不把这些写成确定结论。
 
@@ -153,12 +157,12 @@ vault 里多出这些文件：
 
 遵循 Agent Skills 开放标准，同一份 `SKILL.md` 到处能用。去掉 `SKILL.md`，它也是一套纯 CLI 脚本。
 
-| Harness | 安装位置 | 调用 |
-|---|---|---|
-| Claude Code | `~/.claude/skills/`（用户）或 `.claude/skills/`（项目） | `/podscribe`，或按描述自动触发 |
-| Codex | `~/.agents/skills/`（并软链 `~/.codex/skills/`）或 `.agents/skills/` | 提示词里写 `$podscribe`，或用 `/skills` |
-| WorkBuddy | `~/.workbuddy/skills/` | 说出链接即可 |
-| 其它遵循标准的工具 / 纯 CLI | 任意目录 | `./install.sh --dir <路径>`，或直接跑脚本 |
+| Harness           | 安装位置                                                           | 调用                               |
+| ----------------- | -------------------------------------------------------------- | -------------------------------- |
+| Claude Code       | `~/.claude/skills/`（用户）或 `.claude/skills/`（项目）                 | `/podscribe`，或按描述自动触发            |
+| Codex             | `~/.agents/skills/`（并软链 `~/.codex/skills/`）或 `.agents/skills/` | 提示词里写 `$podscribe`，或用 `/skills`  |
+| WorkBuddy         | `~/.workbuddy/skills/`                                         | 说出链接即可                           |
+| 其它遵循标准的工具 / 纯 CLI | 任意目录                                                           | `./install.sh --dir <路径>`，或直接跑脚本 |
 
 各 harness 的权限、沙箱和子代理用法见 `adapters/claude-code.md` 与 `adapters/codex.md`。Codex 的沙箱默认会挡写操作，第一次跑之前先看一眼那份文档。
 
@@ -209,37 +213,37 @@ python3 summarize.py prompt --job-dir <dir>
 
 ## 文件说明
 
-| 文件 | 职责 |
-|---|---|
-| `SKILL.md` | Agent Skill 定义（触发语、用法、红线），给 Agent 看的说明书 |
-| `setup.py` | 首次配置：问库路径 + 密钥，写 `config.local.toml` 与 `.env` |
-| `core.py` | JSON 协议、配置校验与叠加、路径安全、原子无覆盖写入 |
-| `download.py` | 喜马拉雅 / 小宇宙 / 通用 RSS / 音频直链 / 本地文件 |
-| `transcribe.py` | 云端 ASR（默认，带说话人分离）或本地 faster-whisper |
-| `summarize.py` | plan / show / add / final / prompt，不做外部模型调用 |
-| `publish.py` | 渲染模板 + 原子写入 vault |
-| `run.py` | 编排，按缓存跳过已完成步骤 |
-| `tests.py` | 46 项回归测试（不联网、不碰真实库） |
-| `config.toml` | 模板：`vault.path` 需要你填；ASR 已预填硅基流动 |
-| `config.local.toml` | 本机私有覆盖（setup.py 生成，已 gitignore） |
-| `templates/note.md` | 笔记模板（`{{token}}` 占位） |
-| `templates/summary_prompt.md` | 总结提示词，除「硬性约束」一节外可自己改 |
-| `hotwords.txt` | 专有名词词表，一行一个 |
-| `install.sh` | 多 harness 安装器 |
-| `adapters/` | 各 harness 的安装位置、权限、沙箱与调用方式 |
-| `CHANGELOG.md` | 逐版修改日志 |
-| `.env.example` | 密钥文件模板（真身 `.env` 已被 git 忽略） |
+| 文件                            | 职责                                            |
+| ----------------------------- | --------------------------------------------- |
+| `SKILL.md`                    | Agent Skill 定义（触发语、用法、红线），给 Agent 看的说明书       |
+| `setup.py`                    | 首次配置：问库路径 + 密钥，写 `config.local.toml` 与 `.env` |
+| `core.py`                     | JSON 协议、配置校验与叠加、路径安全、原子无覆盖写入                  |
+| `download.py`                 | 喜马拉雅 / 小宇宙 / 通用 RSS / 音频直链 / 本地文件             |
+| `transcribe.py`               | 云端 ASR（默认，带说话人分离）或本地 faster-whisper           |
+| `summarize.py`                | plan / show / add / final / prompt，不做外部模型调用   |
+| `publish.py`                  | 渲染模板 + 原子写入 vault                             |
+| `run.py`                      | 编排，按缓存跳过已完成步骤                                 |
+| `tests.py`                    | 46 项回归测试（不联网、不碰真实库）                           |
+| `config.toml`                 | 模板：`vault.path` 需要你填；ASR 已预填硅基流动              |
+| `config.local.toml`           | 本机私有覆盖（setup.py 生成，已 gitignore）               |
+| `templates/note.md`           | 笔记模板（`{{token}}` 占位）                          |
+| `templates/summary_prompt.md` | 总结提示词，除「硬性约束」一节外可自己改                          |
+| `hotwords.txt`                | 专有名词词表，一行一个                                   |
+| `install.sh`                  | 多 harness 安装器                                 |
+| `adapters/`                   | 各 harness 的安装位置、权限、沙箱与调用方式                    |
+| `CHANGELOG.md`                | 逐版修改日志                                        |
+| `.env.example`                | 密钥文件模板（真身 `.env` 已被 git 忽略）                   |
 
 脚本之间用 stdout 单行 JSON 通信，诊断信息走 stderr，退出码有语义：
 
-| 码 | 含义 | 码 | 含义 |
-|---|---|---|---|
-| 0 | 成功 | 9 | API 错误（含缺 key） |
-| 2 | 输入/参数错误 | 10 | 校验失败 |
-| 3 | 配置错误（vault / ASR 没填） | 11 | 目标已存在，拒绝覆盖 |
-| 4 | 网络错误 | 12 | 文件系统错误 |
-| 5 | 付费内容，已停 | 13 | 隐私/安全红线被触发 |
-| 6 | 媒体工具错误 | 7 | 转写失败 |
+| 码 | 含义                   | 码  | 含义             |
+| - | -------------------- | -- | -------------- |
+| 0 | 成功                   | 9  | API 错误（含缺 key） |
+| 2 | 输入/参数错误              | 10 | 校验失败           |
+| 3 | 配置错误（vault / ASR 没填） | 11 | 目标已存在，拒绝覆盖     |
+| 4 | 网络错误                 | 12 | 文件系统错误         |
+| 5 | 付费内容，已停              | 13 | 隐私/安全红线被触发     |
+| 6 | 媒体工具错误               | 7  | 转写失败           |
 
 ---
 

@@ -56,8 +56,9 @@ block_minutes = 15          # 读稿分块时长
 # 总结提示词：直接在 templates/summary_prompt.md 里改，改完下次生效。
 # 除了「硬性约束」那节（动了会被校验拦下），其余随便改。
 prompt_file = "templates/summary_prompt.md"
-target_min_chars = 800
-target_max_chars = 1500
+# 正文 = TL;DR + 要点正文 + 章节摘要（章节也算，别把细节全塞进章节绕过校验）
+target_min_chars = 1200
+target_max_chars = 2500
 quote_match_window_seconds = 30
 
 [retention]
