@@ -231,7 +231,6 @@ python3 summarize.py prompt --job-dir <dir>
 | `hotwords.txt`                | 专有名词词表，一行一个                                   |
 | `install.sh`                  | 多 harness 安装器                                 |
 | `adapters/`                   | 各 harness 的安装位置、权限、沙箱与调用方式                    |
-| `CHANGELOG.md`                | 逐版修改日志                                        |
 | `.env.example`                | 密钥文件模板（真身 `.env` 已被 git 忽略）                   |
 
 脚本之间用 stdout 单行 JSON 通信，诊断信息走 stderr，退出码有语义：

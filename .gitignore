@@ -11,6 +11,9 @@ __pycache__/
 # 本地私有配置（填了真实 vault 路径的副本，用这个名字就不会被 git 跟踪）
 config.local.toml
 
+# 修改日志只留本地，不进公开仓库
+CHANGELOG.md
+
 # 系统与编辑器
 .DS_Store
 Thumbs.db

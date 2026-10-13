@@ -229,7 +229,6 @@ After editing the prompt, re-run `final` and `publish`; no need to transcribe ag
 | `hotwords.txt` | Proper-noun vocabulary, one term per line |
 | `install.sh` | Multi-harness installer |
 | `adapters/` | Per-harness install location, permissions, sandbox and invocation |
-| `CHANGELOG.md` | Release-by-release change log |
 | `.env.example` | Key-file template (the real `.env` is gitignored) |
 
 Scripts talk to each other over single-line JSON on stdout, diagnostics go to stderr, and exit codes carry meaning:

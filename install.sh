@@ -18,7 +18,8 @@ SCOPE="user"
 CUSTOM_DIR=""
 
 # 技能本体：只拷这些，不拷 .git / __pycache__ / .env / README / install.sh
-FILES=(SKILL.md VERSION CHANGELOG.md config.toml hotwords.txt .env.example
+# 注意：CHANGELOG.md 只在本地仓库里，不随公开仓库分发，所以不在这里
+FILES=(SKILL.md VERSION config.toml hotwords.txt .env.example
        core.py download.py transcribe.py summarize.py publish.py run.py
        setup.py tests.py)
 
